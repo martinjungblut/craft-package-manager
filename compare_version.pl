@@ -24,12 +24,10 @@ sub compare{
   return 1 if !$b;
   my @a = @{$a};
   my @b = @{$b};
-  #say for @a;
-  #say for @b;
   my $size = (scalar @a > scalar @b)? @a:@b;
   for ( my $pos=0, my $cmp; $pos<$size; $pos++ ) {
     if(defined $a[$pos] && defined $b[$pos]){
-      if ( looks_like_number($a[$pos]) && looks_like_number($b[$pos]) ) {
+      if( looks_like_number($a[$pos]) && looks_like_number($b[$pos]) ){
         return $cmp if (($cmp = $a[$pos] <=> $b[$pos]) != 0);
       }else{
         return $cmp if (($cmp = lc $a[$pos] cmp lc $b[$pos]) != 0);
@@ -59,6 +57,8 @@ sub test{
   say "Error: $a $b" if compare($a, $b) == -1;
 }
 
+# use 'test' instead of 'display' for testing purposes
+# when testing, use the actual higher version as the first argument
 display '2.0', '1.0';
 display '2.0', '2.0';
 display '1.0', '0.1';
