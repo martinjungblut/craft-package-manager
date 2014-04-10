@@ -1,4 +1,4 @@
-craft-package-manager
+Craft Package Manager
 =====================
 
 Craft is a next-generation package manager targeted at Unix-like operating systems.
