@@ -4,6 +4,11 @@
 from re import findall
 import unittest
 
+# Version parsing algorithm
+# 1 - Case insensitive regular expression matches letters and numbers.
+# 2 - For each one of the matching groups, check whether it is possible to convert it to an integer, and do so if possible. If not possible, convert group to lowercase.
+# 3 - Glue individual sequential group strings together, while keeping everything in the same order as before.
+# Currently not the most efficient implementation, since it uses two lists and a buffer. In-place list manipulation would be better.
 def parse(version):
     matches = findall('([aA-zZ]+|[0-9]+)', str(version))
     if matches:
@@ -12,10 +17,26 @@ def parse(version):
                 matches[matches.index(match)] = int(match)
             except:
                 matches[matches.index(match)] = match.lower()
-        return matches
+        strbuffer = ""
+        new_matches = []
+        for match in matches:
+            if isinstance(match, str):
+                strbuffer = strbuffer + match
+            else:
+                if strbuffer:
+                    new_matches.append(strbuffer)
+                    strbuffer = ""
+                new_matches.append(match)
+        if strbuffer:
+            new_matches.append(strbuffer)
+        return new_matches
     else:
         return False
 
+# Version comparison algorithm
+# 1 - Parse both versions.
+# 2 - Check parsing results, and return the appropriate value in case one of the versions could not be parsed properly, or was empty.
+# 3 - Compare parsing results, and in case one of them has an empty element as the current one being compared, always return -1 in case it is a string, and 1 in case it is an int.
 def compare(fversion, sversion):
     fmatches = parse(fversion)
     smatches = parse(sversion)
@@ -25,15 +46,6 @@ def compare(fversion, sversion):
         return -1
     elif not smatches:
         return 1
-    if all(isinstance(elem, str) for elem in fmatches) and all(isinstance(elem, str) for elem in smatches):
-        fmatches = ''.join(fmatches)
-        smatches = ''.join(smatches)
-        if fmatches > smatches:
-            return 1
-        elif fmatches < smatches:
-            return -1
-        else:
-            return 0
     size = len(fmatches) if len(fmatches) > len(smatches) else len(smatches)
     for x in range(0, size):
         try:
@@ -50,53 +62,36 @@ def compare(fversion, sversion):
 
 class Tests(unittest.TestCase):
     def test_parse(self):
-        self.assertEqual(parse('0.0.15-rc2.XX.3-2alPhA------TEST'), [0, 0, 15, 'rc', 2, 'xx', 3, 2, 'alpha', 'test'])
-        self.assertEqual(parse('-.-.-.-'), False)
         self.assertEqual(parse(''), False)
+        self.assertEqual(parse('-.-.-.-'), False)
+        self.assertEqual(parse('0.127a.15-rc2.XX.3-2alPhA------TEST'), [0, 127, 'a', 15, 'rc', 2, 'xx', 3, 2, 'alphatest'])
+        self.assertEqual(parse('P-Y-T-H-O-N2,7,6'), ['python', 2, 7, 6])
+        self.assertEqual(parse('P-Y-T-H-O-N2,7,6dev'), ['python', 2, 7, 6, 'dev'])
+        self.assertEqual(parse('p-y-t-h-o-n'), ['python'])
+        self.assertEqual(parse('p-y-t-h-o-n2,7,6'), ['python', 2, 7, 6])
+        self.assertEqual(parse('p-y-t-h-o-n2.7.6'), ['python', 2, 7, 6])
+        self.assertEqual(parse('py-th-on2.7.6dev'), ['python', 2, 7, 6, 'dev'])
 
+    # Use the expected integer as the first parameter, for legibility.
     def test_compare(self):
-        self.assertEqual(compare('', ''), 0)
-        self.assertEqual(compare('0.10', '0.9'), 1)
-        self.assertEqual(compare('0.10---rc2-dev.3', '0.10---rc2-dev.3'), 0)
-        self.assertEqual(compare('0.100dev', '0.99'), 1)
-        self.assertEqual(compare('1.1', '1.1'), 0)
-        self.assertEqual(compare('1.1.3', '1.1.2'), 1)
-        self.assertEqual(compare('1.111dev', '1.111-dev'), 0)
-        self.assertEqual(compare('1.111dev', '1.111dev'), 0)
-        self.assertEqual(compare('1.113rc2', '1.113-rc1'), 1)
-        self.assertEqual(compare('1.11a', '1.11a'), 0)
-        self.assertEqual(compare('1.11a', '1.9b'), 1)
-        self.assertEqual(compare('1.11ba', '1.11b'), 1)
-        self.assertEqual(compare('1.99', '1.99dev'), 1)
-        self.assertEqual(compare('11-1-2', '9-11-2'), 1)
-        self.assertEqual(compare('1111', '1111dev'), 1)
-        self.assertEqual(compare('2.1', '1.1'), 1)
-        self.assertEqual(compare('2.1', '2.1'), 0)
-        self.assertEqual(compare('2128-1', '2128-1a'), 1)
-        self.assertEqual(compare('21281', '21281a'), 1)
-        self.assertEqual(compare('3.2-final', '3.2-beta'), 1)
-        self.assertEqual(compare('4.1.1', '4.1.1-alpha'), 1)
-        self.assertEqual(compare('B', 'b'), 0)
-        self.assertEqual(compare('FINAL', 'final'), 0)
-        self.assertEqual(compare('alpha', 'a'), 1)
-        self.assertEqual(compare('alpha', 'a-1'), 1)
-        self.assertEqual(compare('alpha', 'a-11'), 1)
-        self.assertEqual(compare('alpha', 'a1'), 1)
-        self.assertEqual(compare('b', 'a'), 1)
-        self.assertEqual(compare('pre-alpha', 'prealpha'), 0)
-        self.assertEqual(compare('pre-alpha1', 'pre-alpha1'), 0)
-        self.assertEqual(compare('prealpha', 'P-R-E-A-L-P-H-A'), 0)
-        self.assertEqual(compare('prealpha1', 'pre-alpha1'), 1)
-        self.assertEqual(compare('rc', 'rc'), 0)
-        self.assertEqual(compare('rc-----11', 'rc--11----'), 0)
-        self.assertEqual(compare('rc-----11', 'rc11'), 0)
-        self.assertEqual(compare('rc-----21', 'rc---'), 1)
-        self.assertEqual(compare('rc-----21', 'rc11'), 1)
-        self.assertEqual(compare('rc1', 'rc-1'), 0)
-        self.assertEqual(compare('rc1', 'rc1'), 0)
-        self.assertEqual(compare('rc21-rc22-rc23', 'rc21rc22rc23'), 0)
-        self.assertEqual(compare('rc22', 'rc21-rc22-rc23'), 1)
-        self.assertEqual(compare('rc3', 'rc1'), 1)
+        self.assertEqual(-1, compare('3.2rc0', '3.2-rc1'))
+        self.assertEqual(0, compare('',''))
+        self.assertEqual(0, compare('1.0', '1.0'))
+        self.assertEqual(0, compare('1.0-A', '1.0a'))
+        self.assertEqual(0, compare('1.0-a', '1.0a'))
+        self.assertEqual(0, compare('1.0a', '1.0a'))
+        self.assertEqual(0, compare('pre-alpha', 'prealpha'))
+        self.assertEqual(0, compare('pre-alpha-1', 'prealpha1'))
+        self.assertEqual(1, compare('1.0', '1'))
+        self.assertEqual(1, compare('1.0-aa', '1.0a'))
+        self.assertEqual(1, compare('1.0-ab', '1.0a'))
+        self.assertEqual(1, compare('1.0.1', '1.0'))
+        self.assertEqual(1, compare('1.0.1', '1.0.1dev'))
+        self.assertEqual(1, compare('1.0aa', '1.0a'))
+        self.assertEqual(1, compare('3.2', '3.2-rc1'))
+        self.assertEqual(1, compare('3.2-9999', '3.2-9998'))
+        self.assertEqual(1, compare('3.2-final', '3.2beta'))
+        self.assertEqual(1, compare('3.2final', '3.2beta'))
 
 if __name__ == '__main__':
     unittest.main()
