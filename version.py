@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from re import findall
-import unittest
 
 # Version parsing algorithm
 # 1 - Case insensitive regular expression matches letters and numbers.
@@ -59,39 +58,3 @@ def compare(fversion, sversion):
             except IndexError:
                 return -1 if isinstance(smatches[x], int) else 1
     return 0
-
-class Tests(unittest.TestCase):
-    def test_parse(self):
-        self.assertEqual(parse(''), False)
-        self.assertEqual(parse('-.-.-.-'), False)
-        self.assertEqual(parse('0.127a.15-rc2.XX.3-2alPhA------TEST'), [0, 127, 'a', 15, 'rc', 2, 'xx', 3, 2, 'alphatest'])
-        self.assertEqual(parse('P-Y-T-H-O-N2,7,6'), ['python', 2, 7, 6])
-        self.assertEqual(parse('P-Y-T-H-O-N2,7,6dev'), ['python', 2, 7, 6, 'dev'])
-        self.assertEqual(parse('p-y-t-h-o-n'), ['python'])
-        self.assertEqual(parse('p-y-t-h-o-n2,7,6'), ['python', 2, 7, 6])
-        self.assertEqual(parse('p-y-t-h-o-n2.7.6'), ['python', 2, 7, 6])
-        self.assertEqual(parse('py-th-on2.7.6dev'), ['python', 2, 7, 6, 'dev'])
-
-    # Use the expected integer as the first parameter, for legibility.
-    def test_compare(self):
-        self.assertEqual(-1, compare('3.2rc0', '3.2-rc1'))
-        self.assertEqual(0, compare('',''))
-        self.assertEqual(0, compare('1.0', '1.0'))
-        self.assertEqual(0, compare('1.0-A', '1.0a'))
-        self.assertEqual(0, compare('1.0-a', '1.0a'))
-        self.assertEqual(0, compare('1.0a', '1.0a'))
-        self.assertEqual(0, compare('pre-alpha', 'prealpha'))
-        self.assertEqual(0, compare('pre-alpha-1', 'prealpha1'))
-        self.assertEqual(1, compare('1.0', '1'))
-        self.assertEqual(1, compare('1.0-aa', '1.0a'))
-        self.assertEqual(1, compare('1.0-ab', '1.0a'))
-        self.assertEqual(1, compare('1.0.1', '1.0'))
-        self.assertEqual(1, compare('1.0.1', '1.0.1dev'))
-        self.assertEqual(1, compare('1.0aa', '1.0a'))
-        self.assertEqual(1, compare('3.2', '3.2-rc1'))
-        self.assertEqual(1, compare('3.2-9999', '3.2-9998'))
-        self.assertEqual(1, compare('3.2-final', '3.2beta'))
-        self.assertEqual(1, compare('3.2final', '3.2beta'))
-
-if __name__ == '__main__':
-    unittest.main()
