@@ -10,4 +10,4 @@ Its main concerns are, in order:
 - _User-friendliness_: the command line interface should be very straightforward and easy to use.
 - _Performance_: things should be fast, but not while sacrifing any of the above.
 
-If we have any suggestions or questions, feel free to drop us a message.
+If you have any suggestions or questions, feel free to drop us a message.
