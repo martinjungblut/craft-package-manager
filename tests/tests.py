@@ -3,6 +3,10 @@
 
 from os import remove
 from shutil import rmtree
+
+import sys
+sys.path.append("..")
+
 import archive
 import unittest
 import version
