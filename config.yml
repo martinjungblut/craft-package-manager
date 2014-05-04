@@ -2,8 +2,8 @@
 ---
 
 repositories:
-  craft-dev:
-    target: http://www.opendusk.com.br/craft-dev
+  local:
+    target: http://localhost/craft
     handler: wget -c
     #env:
       #http_proxy: "http://ucs-gw.ucs.br:3128"
