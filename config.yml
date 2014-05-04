@@ -1,0 +1,20 @@
+# Craft configuration
+---
+
+repositories:
+  craft-dev:
+    target: http://www.opendusk.com.br/craft-dev
+    handler: wget -c
+    #env:
+      #http_proxy: "http://ucs-gw.ucs.br:3128"
+  cdrom:
+    target: /dev/sr0
+    handler: mount
+
+architectures:
+  - any
+
+groups: null
+
+fakeroot: /home/martin/University/craft/craft-package-manager/fakeroot
+fakedb: /home/martin/University/craft/craft-package-manager/fakedb
