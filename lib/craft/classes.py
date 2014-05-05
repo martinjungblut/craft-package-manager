@@ -54,7 +54,7 @@ class Unit(object):
         pass
 
 class Package(Unit):
-    def __init__(self, name = "", version = "0"):
+    def __init__(self, name, version):
         self.name = str(name)
         self.version = str(version)
         self._tags = []
