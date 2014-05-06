@@ -12,9 +12,13 @@ repositories:
     handler: mount
 
 architectures:
-  - any
+  default: i386
+  enabled:
+    - i386
 
-groups: null
+groups:
+  - base
+  - xorg
 
 fakeroot: /home/martin/University/craft/craft-package-manager/fakeroot
 fakedb: /home/martin/University/craft/craft-package-manager/fakedb

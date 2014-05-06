@@ -5,7 +5,7 @@ from tarfile import open as archive_open
 def getfiles(filename):
     """ Get all files from a package file as a list,
     ignoring special control files. """
-    controlfiles = [ 
+    controlfiles = [
         '.', './.craft', './.craft/postinst',
         './.craft/postrm', './.craft/preinst', './.craft/prerm'
     ]

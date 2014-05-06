@@ -1,23 +1,5 @@
 from abc import ABCMeta, abstractmethod
 
-class Architecture(object):
-    def __init__(self, name = ""):
-        self._name = name
-        self._units = []
-
-    def name(self):
-        return self._name
-
-    def add(self, unit):
-        self._units.append(unit)
-
-    def remove(self, unit):
-        try:
-            self._units.remove(unit)
-            return True
-        except ValueError:
-            return False
-
 class Unit(object):
     __metaclass__ = ABCMeta
 
