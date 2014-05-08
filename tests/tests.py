@@ -48,13 +48,13 @@ class Version_Tests(unittest.TestCase):
 
 class Archive_GetFilesTest(unittest.TestCase):
     def runTest(self):
-        self.assertEqual(craft.archive.getfiles('test.tar.gz'), ['./foo'])
-        self.assertEqual(craft.archive.getfiles('invalid.tar.gz'), False)
+        self.assertEqual(craft.archive.getfiles('archive/working1.tar.gz'), ['./foo'])
+        self.assertEqual(craft.archive.getfiles('does_not_exist.tar.gz'), False)
 
 class Archive_ExtractTest(unittest.TestCase):
     def runTest(self):
-        self.assertEqual(craft.archive.extract('test.tar.gz'), True)
-        self.assertEqual(craft.archive.extract('invalid.tar.gz'), False)
+        self.assertEqual(craft.archive.extract('archive/working1.tar.gz'), True)
+        self.assertEqual(craft.archive.extract('does_not_exist.tar.gz'), False)
 
     def tearDown(self):
         rmtree('.craft')
