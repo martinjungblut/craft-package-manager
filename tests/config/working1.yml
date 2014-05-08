@@ -1,0 +1,22 @@
+# Craft configuration
+---
+
+repositories:
+  local:
+    target: http://localhost/craft
+    handler: wget -c
+  cdrom:
+    target: /dev/sr0
+    handler: mount
+
+architectures:
+  default: i386
+  enabled:
+    - i386
+
+groups:
+  - base
+  - xorg
+
+fakeroot: /home/martin/University/craft/craft-package-manager/fakeroot
+fakedb: /home/martin/University/craft/craft-package-manager/fakedb

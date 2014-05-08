@@ -3,11 +3,15 @@
 
 from os import remove
 from shutil import rmtree
+from glob import glob
 
 import sys, os, unittest
 sys.path.append(os.path.abspath('../lib'))
 
-import craft
+import craft.archive
+import craft.config
+import craft.utils
+import craft.version
 
 class Version_Tests(unittest.TestCase):
     def test_parse(self):
@@ -55,6 +59,13 @@ class Archive_ExtractTest(unittest.TestCase):
     def tearDown(self):
         rmtree('.craft')
         remove('foo')
+
+class Config_Tests(unittest.TestCase):
+    def test_Configuration(self):
+        for working in glob('config/working*.yml'):
+            self.assertIsInstance(craft.config.Configuration(craft.utils.load_yaml(working)), craft.config.Configuration)
+        for not_working in glob('config/not_working*.yml'):
+            self.assertRaises(craft.config.ConfigurationError, craft.config.Configuration, craft.utils.load_yaml(not_working))
 
 if __name__ == '__main__':
     unittest.main()

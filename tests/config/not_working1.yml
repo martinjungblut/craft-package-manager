@@ -1,0 +1,19 @@
+# Craft configuration
+---
+
+repositories:
+  local:
+    target: http://localhost/craft
+    handler: 3
+
+architectures:
+  default: i386
+  enabled:
+    - i386
+
+groups:
+  - base
+  - xorg
+
+fakeroot: /home/martin/University/craft/craft-package-manager/fakeroot
+fakedb: /home/martin/University/craft/craft-package-manager/fakedb

@@ -11,51 +11,68 @@ class Configuration(object):
         """ data must be a valid Python representation
         of Craft's configuration file.
         In case it is not, ConfigurationError is raised. """
+        if data is None:
+            raise ConfigurationError
+
         try:
-            if isinstance(data['repositories'], list):
-                for repository in data['repositories']:
-                    target = data['repositories'][repository]['target']
-                    handler = data['repositories'][repository]['handler']
+            repositories = data['repositories']
+            if isinstance(repositories, dict):
+                for repository in repositories:
+                    if not isinstance(repositories[repository], dict):
+                        raise ConfigurationError
+                    target = repositories[repository]['target']
+                    handler = repositories[repository]['handler']
                     if not isinstance(target, str):
                         raise ConfigurationError
-                    if not isinstance(handler, str):
+                    elif not isinstance(handler, str):
                         raise ConfigurationError
-            elif data['repositories'] is not None:
+                    try:
+                        env = repositories[repository]['env']
+                        if not isinstance(env, dict):
+                            raise ConfigurationError
+                        for variable in env:
+                            if not isinstance(variable, str):
+                                raise ConfigurationError
+                    except KeyError:
+                        pass
+            elif repositories is not None:
                 raise ConfigurationError
-        except:
+        except KeyError:
             raise ConfigurationError
 
         try:
-            if not isinstance(data['architectures'], dict):
+            architectures = data['architectures']
+            if not isinstance(architectures, dict):
                 raise ConfigurationError
-            if not isinstance(data['architectures']['default'], str):
+            if not isinstance(architectures['default'], str):
                 raise ConfigurationError
-            if not isinstance(data['architectures']['enabled'], list):
+            if not isinstance(architectures['enabled'], list):
                 raise ConfigurationError
-            for architecture in data['architectures']['enabled']:
-                if not isinstance(architecture, str):
+        except KeyError:
+            raise ConfigurationError
+        for architecture in architectures['enabled']:
+            if not isinstance(architecture, str):
+                raise ConfigurationError
+
+        try:
+            groups = data['groups']
+        except KeyError:
+            raise ConfigurationError
+        if isinstance(groups, list):
+            for group in groups:
+                if not isinstance(group, str):
                     raise ConfigurationError
-        except ValueError:
-            raise ConfigurationError
-
-        try:
-            if isinstance(data['groups'], list):
-                for group in data['groups']:
-                    if not isinstance(group, str):
-                        raise ConfigurationError
-            elif data['groups'] is not None:
-                raise ConfigurationError
-        except ValueError:
+        elif groups is not None:
             raise ConfigurationError
 
         try:
             fakedb = data['fakedb']
             fakeroot = data['fakeroot']
-            if fakedb is not None and not isinstance(fakedb, str):
-                raise ConfigurationError
-            if fakeroot is not None and not isinstance(fakeroot, str):
-                raise ConfigurationError
-        except ValueError:
+        except KeyError:
+            raise ConfigurationError
+        if fakedb is not None and not isinstance(fakedb, str):
+            raise ConfigurationError
+        elif fakeroot is not None and not isinstance(fakeroot, str):
             raise ConfigurationError
 
         self.repositories = data['repositories']

@@ -1,0 +1,25 @@
+# Craft configuration
+---
+
+repositories:
+  local:
+    target: http://localhost/craft
+    handler: wget -c
+    env:
+      http_proxy: "http://ucs-gw.ucs.br:3128"
+      somevar: "somevalue"
+  cdrom:
+    target: /dev/sr0
+    handler: mount
+
+architectures:
+  default: i386
+  enabled:
+    - i386
+
+groups:
+  - base
+  - xorg
+
+fakeroot: /home/martin/University/craft/craft-package-manager/fakeroot
+fakedb: /home/martin/University/craft/craft-package-manager/fakedb
