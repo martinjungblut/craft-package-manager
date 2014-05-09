@@ -4,7 +4,7 @@ class Installable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def target_for_installation(self, targets, installationed):
+    def target_for_installation(self, targets, installed):
         pass
 
     @abstractmethod
@@ -15,7 +15,7 @@ class Uninstallable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def target_for_uninstallation(self, targets, installationed):
+    def target_for_uninstallation(self, targets, installed):
         pass
 
     @abstractmethod
