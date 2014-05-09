@@ -2,12 +2,12 @@
 
 from sys import exit as sys_exit
 
-def fatal(message, code):
+def fatal(message, status):
     """ Informs the user a fatal error has occurred.
     message is printed to the screen
-    code is returned as the system's exit status. """
+    status is returned as the system's exit status. """
     print("Fatal error: "+message)
-    sys_exit(code)
+    sys_exit(status)
 
 def warning(message):
     """ Informs the user about an unexpected event. """

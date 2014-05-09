@@ -1,4 +1,4 @@
-""" Specifies an interface for handling Craft's configuration. """
+""" Provides an interface for handling Craft's configuration. """
 
 class ConfigurationError(Exception):
     """ Indicates there is an error in Craft's configuration. """
