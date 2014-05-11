@@ -1,5 +1,6 @@
-""" Provides functions for handling software version strings. """
+""" Interface for handling software version strings. """
 
+# Standard library imports
 from re import findall
 
 def parse(version):

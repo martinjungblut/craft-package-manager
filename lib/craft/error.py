@@ -1,5 +1,6 @@
-""" Errors and warnings. """
+""" Interface for handling errors and warnings. """
 
+# Standard library imports
 from sys import exit as sys_exit
 
 def fatal(message, status):

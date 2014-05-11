@@ -1,3 +1,4 @@
+# Standard library imports
 from abc import ABCMeta, abstractmethod
 
 class Installable(object):
@@ -45,9 +46,10 @@ class Downgradeable(object):
         pass
 
 class Package(Installable, Uninstallable, Upgradeable, Downgradeable):
-    def __init__(self, name, version):
+    def __init__(self, name, version, architecture):
         self.name = str(name)
         self.version = str(version)
+        self.architecture = str(architecture)
         self._tags = []
         self._misc = {}
         self._dependencies = []

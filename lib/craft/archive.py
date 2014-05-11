@@ -1,5 +1,6 @@
-""" Provides a uniform interface for managing package archives. """
+""" Interface for managing package archives. """
 
+# Standard library imports
 from tarfile import open as archive_open
 
 def getfiles(filename):
