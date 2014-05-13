@@ -1,7 +1,7 @@
 """ Interface for loading Craft-related files. """
 
 # Third-party imports
-import yaml
+import yaml as libyaml
 
 # Craft imports
 import validate
@@ -10,16 +10,16 @@ from repository import Repository
 from units import Package, MetaPackage
 
 class YAMLError(Exception):
-    """ Abstracts yaml.YAMLError in a native Craft exception. """
+    """ Abstracts libyaml.YAMLError in a native Craft exception. """
     pass
 
 def yaml(file_path):
     """ Opens a YAML file, parses it and returns its data.
     Raises YAMLError in case the file is not a valid YAML file.
     Raises IOError in case the file could not be read. """
+    file_handle = open(file_path)
     try:
-        file_handle = open(file_path)
-        data = yaml.load(file_handle)
+        data = libyaml.load(file_handle)
         return data
     except yaml.YAMLError:
         raise YAMLError

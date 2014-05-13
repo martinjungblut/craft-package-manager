@@ -4,7 +4,7 @@ Craft Package Manager
 _This fork is focused on experimental features and ideas._
 
 Craft is a next-generation package manager targeted at Unix-like operating systems.
-It is written in Python, supporting both Python 2.4+ and 3.X.
+It is written in Python, supporting both Python 2.6+ and 3.X.
 
 Its main concerns are, in order:
 - _Security and correctness_: the user should know his system is in a good state at all times. Upgrading and downgrading should be easy. Corner cases should be easily treatable.

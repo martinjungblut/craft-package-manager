@@ -9,9 +9,10 @@ import sys, os, unittest
 sys.path.append(os.path.abspath('../lib'))
 
 import craft.archive
-import craft.config
-import craft.utils
+import craft.configuration
+import craft.load
 import craft.version
+import craft.validate
 
 class Version_Tests(unittest.TestCase):
     def test_parse(self):
@@ -60,12 +61,18 @@ class Archive_ExtractTest(unittest.TestCase):
         rmtree('.craft')
         remove('foo')
 
-class Config_Tests(unittest.TestCase):
+class Configuration_Tests(unittest.TestCase):
     def test_Configuration(self):
-        for working in glob('config/working*.yml'):
-            self.assertIsInstance(craft.config.Configuration(craft.utils.load_yaml(working)), craft.config.Configuration)
-        for not_working in glob('config/not_working*.yml'):
-            self.assertRaises(craft.config.ConfigurationError, craft.config.Configuration, craft.utils.load_yaml(not_working))
+        for working in glob('configuration/working*.yml'):
+            self.assertIsInstance(craft.configuration.Configuration(craft.load.yaml(working)), craft.configuration.Configuration)
+        for not_working in glob('configuration/not_working*.yml'):
+            self.assertRaises(craft.validate.ConfigurationError, craft.validate.configuration, craft.load.yaml(not_working))
+
+class Validate_Tests(unittest.TestCase):
+    def test_repository(self):
+        for working in glob('validate/working*.yml'):
+            self.assertTrue(craft.validate.repository(craft.load.yaml(working)))
+        self.assertRaises(craft.validate.PackageError, craft.validate.repository, craft.load.yaml('validate/not_working1.yml'))
 
 if __name__ == '__main__':
     unittest.main()

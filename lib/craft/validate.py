@@ -6,29 +6,29 @@ class RepositoryError(Exception):
 
 def repository(structure):
     """ Validates a repository's structure.
-    Returns True in case the structure is valid.
     Raises RepositoryError in case there is an error in its definition.
     Raises PackageError in case there is an error in
     a package definition.
     Raises MetaPackageError in case there is an error in a
-    metapackage definition. """
+    metapackage definition.
+    Returns True on success. """
 
     if not isinstance(structure, dict):
         raise RepositoryError
 
-    for element in structure:
+    for element in structure.iterkeys():
         if not isinstance(element, str):
             raise RepositoryError
         elif not isinstance(structure[element], dict):
             raise RepositoryError
 
-        for version in element:
+        for version in structure[element].iterkeys():
             if not isinstance(version, str) and not isinstance(version, float):
                 raise RepositoryError
             elif not isinstance(structure[element][version], dict):
                 raise RepositoryError
 
-            for architecture in version:
+            for architecture in structure[element][version].iterkeys():
                 if not isinstance(architecture, str):
                     raise RepositoryError
                 elif not isinstance(structure[element][version][architecture], dict):
@@ -40,81 +40,77 @@ def repository(structure):
                     raise RepositoryError
                 else:
                     if type == 'package':
-                        package(metapackage(structure[element][version][architecture]))
+                        package(structure[element][version][architecture])
                     elif type == 'metapackage':
                         metapackage(structure[element][version][architecture])
 
     return True
 
-class PackageError(Exception):
-    """ Indicates there is an error in a package's structure. """
+class BasePackageError(Exception):
+    """ Indicates there is an error in a basic package's structure. """
     pass
 
-def package(structure):
-    """ Validates a package's structure.
-    Raises PackageError in case it is invalid. """
-
+def basepackage(structure):
+    """ Validates a base package structure.
+    Raises BasePackageError in case it is invalid. """
     try:
-        metapackage(structure)
-    except MetaPackageError:
-        raise PackageError
-
-    if structure['files'] is None:
-        raise PackageError
-
-class MetaPackageError(Exception):
-    """ Indicates there is an error in a metapackage's structure. """
-    pass
-
-def metapackage(structure):
-    """ Validates a metapackage's structure.
-    Raises MetaPackageError in case it is invalid. """
-
-    try:
+        hashes = structure['hashes']
         files = structure['files']
+        groups = structure['groups']
         relationships = structure['relationships']
         provides = structure['provides']
-        tags = structure['information']['tags']
         misc = structure['information']['misc']
+        tags = structure['information']['tags']
     except KeyError:
         raise MetaPackageError
 
-    if files is not None:
-        if not isinstance(files, dict):
+    if hashes is not None:
+        if not isinstance(hashes, dict):
             raise MetaPackageError
-        try:
-            static = files['static']
-            hashes = files['hashes']
-        except KeyError:
-            raise MetaPackageError
+        for key in hashes.iterkeys():
+            if not isinstance(key, str):
+                raise MetaPackageError
+            elif not isinstance(hashes[key], str):
+                raise MetaPackageError
+
+    if not isinstance(files, dict):
+        raise MetaPackageError
+    try:
+        static = files['static']
+    except KeyError:
+        raise MetaPackageError
+    if static is not None:
         if not isinstance(static, list):
-            raise MetaPackageError
-        elif not isinstance(hashes, list):
             raise MetaPackageError
         for filepath in static:
             if not isinstance(filepath, str):
                 raise MetaPackageError
-        for filehash in hashes:
-            if not isinstance(filehash, str):
-                raise MetaPackageError
 
-    if relationships is not None:
-        if not isinstance(relationships, dict):
-            raise MetaPackageError
-        try:
-            depends = relationships['depends']
-            conflicts = relationships['conflicts']
-        except KeyError:
-            raise MetaPackageError
+    if not isinstance(relationships, dict):
+        raise MetaPackageError
+    try:
+        depends = relationships['depends']
+        conflicts = relationships['conflicts']
+    except KeyError:
+        raise MetaPackageError
+    if depends is not None:
         if not isinstance(depends, list):
-            raise MetaPackageError
-        elif not isinstance(conflicts, list):
             raise MetaPackageError
         for dependency in depends:
             if not isinstance(dependency, str):
                 raise MetaPackageError
+    if conflicts is not None:
+        if not isinstance(conflicts, list):
+            raise MetaPackageError
         for conflict in conflicts:
             if not isinstance(conflict, str):
+                raise MetaPackageError
+
+    if groups is not None:
+        if not isinstance(groups, list):
+            raise MetaPackageError
+        for group in groups:
+            if not isinstance(group, str):
                 raise MetaPackageError
 
     if provides is not None:
@@ -139,6 +135,37 @@ def metapackage(structure):
                 raise MetaPackageError
             elif not isinstance(misc[key], str):
                 raise MetaPackageError
+
+class PackageError(Exception):
+    """ Indicates there is an error in a package's structure. """
+    pass
+
+def package(structure):
+    """ Validates a package's structure.
+    Raises PackageError in case it is invalid. """
+
+    try:
+        basepackage(structure)
+    except BasePackageError:
+        raise PackageError
+
+    if structure['hashes'] is None:
+        raise PackageError
+
+class MetaPackageError(Exception):
+    """ Indicates there is an error in a metapackage's structure. """
+    pass
+
+def metapackage(structure):
+    """ Validates a metapackage's structure.
+    Raises MetaPackageError in case it is invalid. """
+    try:
+        basepackage(structure)
+    except BasePackageError:
+        raise MetaPackageError
+
+    if structure['relationships']['depends'] is None:
+        raise MetaPackageError
 
 class ConfigurationError(Exception):
     """ Indicates there is an error in a configuration structure. """
