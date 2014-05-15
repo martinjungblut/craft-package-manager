@@ -4,7 +4,7 @@
 from abc import ABCMeta, abstractmethod
 
 class Unit(object):
-    """ Base unit. Abstract. All units must have a name. """
+    """ Base unit. """
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -53,12 +53,13 @@ class Downgradeable(object):
         raise NotImplementedError
 
 class Package(Unit):
-    """ Represents package. Not yet fully implemented. """
+    """ Represents a remotely available package. Not yet fully implemented. """
 
     def __init__(self, name, version, architecture):
         super(Package, self).__init__(name)
         self.version = str(version)
         self.architecture = str(architecture)
+        self._groups = []
         self._tags = []
         self._misc = {}
         self._dependencies = []
@@ -127,10 +128,23 @@ class Package(Unit):
         self._tags.append(tag)
 
     def has_tag(self, tag):
-        """ Checks wether or not this package has a specific tag.
+        """ Checks whether or not this package has a specific tag.
             Return True if positive, False otherwise. """
         try:
             self._tags.index(tag)
+            return True
+        except ValueError:
+            return False
+
+    def in_group(self, group):
+        """ Declares this package as a member of given group. """
+        self._groups.append(group)
+
+    def is_in_group(self, group):
+        """ Checks whether or not this package is in a specific group.
+            Return True if positive, False otherwise. """
+        try:
+            self._groups.index(group)
             return True
         except ValueError:
             return False
@@ -154,16 +168,22 @@ class MetaPackage(Package):
         super(MetaPackage, self).__init__(name, version, architecture)
         raise NotImplementedError
 
-class VirtualPackage(Installable):
-    """ Represents a virtual package. Not yet implemented. """
+class VirtualPackage(Unit):
+    """ Represents a virtual package. """
 
-    def __init__(self):
-        """ Not yet implemented. Always raises NotImplementedError. """
-        raise NotImplementedError
+    def __init__(self, name):
+        super(VirtualPackage, self).__init__(name)
+        self.provided = set()
 
-class Group(Installable):
-    """ Represents a group of packages. Not yet implemented. """
+    def provided_by(self, package):
+        self.provided.add(package)
 
-    def __init__(self):
-        """ Not yet implemented. Always raises NotImplementedError. """
-        raise NotImplementedError
+class Group(Unit):
+    """ Represents a group of packages. """
+
+    def __init__(self, name):
+        super(Group, self).__init__(name)
+        self.packages = set()
+    
+    def add(self, package):
+        self.packages.add(package)
