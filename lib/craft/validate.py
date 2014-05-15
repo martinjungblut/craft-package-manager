@@ -38,11 +38,10 @@ def repository(structure):
                     type = structure[element][version][architecture]['type']
                 except KeyError:
                     raise RepositoryError
-                else:
-                    if type == 'package':
-                        package(structure[element][version][architecture])
-                    elif type == 'metapackage':
-                        metapackage(structure[element][version][architecture])
+                if type == 'package':
+                    package(structure[element][version][architecture])
+                elif type == 'metapackage':
+                    metapackage(structure[element][version][architecture])
 
     return True
 

@@ -13,12 +13,12 @@ def getfiles(filename):
     try:
         handle = archive_open(filename)
         files = handle.getnames()
+        handle.close()
         try:
             for controlfile in controlfiles:
                 files.remove(controlfile)
         except ValueError:
             pass
-        handle.close()
         return files
     except IOError:
         return False
