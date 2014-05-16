@@ -44,11 +44,11 @@ def repository(file_path):
             for architecture in definition[name][version].iterkeys():
                 data = definition[name][version][architecture]
                 package = Package(name, version, architecture)
-                if data['relationships']['depends']:
-                    for dependency in data['relationships']['depends']:
+                if data['depends']:
+                    for dependency in data['depends']:
                         package.depends(dependency)
-                if data['relationships']['conflicts']:
-                    for conflict in data['relationships']['conflicts']:
+                if data['conflicts']:
+                    for conflict in data['conflicts']:
                         package.conflicts(conflict)
                 if data['provides']:
                     for virtual in data['provides']:

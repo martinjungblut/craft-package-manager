@@ -6,12 +6,10 @@ class RepositoryError(Exception):
 
 def repository(structure):
     """ Validates a repository's structure.
+    Returns True on success.
     Raises RepositoryError in case there is an error in its definition.
     Raises PackageError in case there is an error in
-    a package definition.
-    Raises MetaPackageError in case there is an error in a
-    metapackage definition.
-    Returns True on success. """
+    a package's definition. """
 
     if not isinstance(structure, dict):
         raise RepositoryError
@@ -35,105 +33,11 @@ def repository(structure):
                     raise RepositoryError
 
                 try:
-                    type = structure[element][version][architecture]['type']
-                except KeyError:
-                    raise RepositoryError
-                if type == 'package':
                     package(structure[element][version][architecture])
-                elif type == 'metapackage':
-                    metapackage(structure[element][version][architecture])
+                except PackageError:
+                    raise
 
     return True
-
-class BasicPackageError(Exception):
-    """ Indicates there is an error in a basic package structure. """
-    pass
-
-def basicpackage(structure):
-    """ Validates a base package structure.
-    Raises BasicPackageError in case it is invalid. """
-    try:
-        hashes = structure['hashes']
-        files = structure['files']
-        groups = structure['groups']
-        relationships = structure['relationships']
-        provides = structure['provides']
-        misc = structure['information']['misc']
-        tags = structure['information']['tags']
-    except KeyError:
-        raise BasicPackageError
-
-    if hashes is not None:
-        if not isinstance(hashes, dict):
-            raise BasicPackageError
-        for key in hashes.iterkeys():
-            if not isinstance(key, str):
-                raise BasicPackageError
-            elif not isinstance(hashes[key], str):
-                raise BasicPackageError
-
-    if not isinstance(files, dict):
-        raise BasicPackageError
-    try:
-        static = files['static']
-    except KeyError:
-        raise BasicPackageError
-    if static is not None:
-        if not isinstance(static, list):
-            raise BasicPackageError
-        for filepath in static:
-            if not isinstance(filepath, str):
-                raise BasicPackageError
-
-    if not isinstance(relationships, dict):
-        raise BasicPackageError
-    try:
-        depends = relationships['depends']
-        conflicts = relationships['conflicts']
-    except KeyError:
-        raise BasicPackageError
-    if depends is not None:
-        if not isinstance(depends, list):
-            raise BasicPackageError
-        for dependency in depends:
-            if not isinstance(dependency, str):
-                raise BasicPackageError
-    if conflicts is not None:
-        if not isinstance(conflicts, list):
-            raise BasicPackageError
-        for conflict in conflicts:
-            if not isinstance(conflict, str):
-                raise BasicPackageError
-
-    if groups is not None:
-        if not isinstance(groups, list):
-            raise BasicPackageError
-        for group in groups:
-            if not isinstance(group, str):
-                raise BasicPackageError
-
-    if provides is not None:
-        if not isinstance(provides, list):
-            raise BasicPackageError
-        for virtual in provides:
-            if not isinstance(virtual, str):
-                raise BasicPackageError
-
-    if tags is not None:
-        if not isinstance(tags, list):
-            raise BasicPackageError
-        for tag in tags:
-            if not isinstance(tag, str):
-                raise BasicPackageError
-
-    if misc is not None:
-        if not isinstance(misc, dict):
-            raise BasicPackageError
-        for key in misc.iterkeys():
-            if not isinstance(key, str):
-                raise BasicPackageError
-            elif not isinstance(misc[key], str):
-                raise BasicPackageError
 
 class PackageError(Exception):
     """ Indicates there is an error in a package's structure. """
@@ -144,27 +48,47 @@ def package(structure):
     Raises PackageError in case it is invalid. """
 
     try:
-        basicpackage(structure)
-    except BasicPackageError:
+        hashes = structure['hashes']
+        files_static = structure['files']['static']
+        depends = structure['depends']
+        conflicts = structure['conflicts']
+        replaces = structure['replaces']
+        provides = structure['provides']
+        groups = structure['groups']
+        flags = structure['flags']
+        maintainers = structure['information']['maintainers']
+        tags = structure['information']['tags']
+        misc = structure['information']['misc']
+    except KeyError:
         raise PackageError
 
-    if structure['hashes'] is None:
-        raise PackageError
+    must_be_str_list = [
+            files_static, depends, conflicts,
+            replaces, provides, groups,
+            flags, tags, maintainers
+    ]
 
-class MetaPackageError(Exception):
-    """ Indicates there is an error in a metapackage's structure. """
-    pass
+    for element in must_be_str_list:
+        if element is not None:
+            if not isinstance(element, list):
+                raise PackageError
+            for subelement in element:
+                if not isinstance(subelement, str):
+                    raise PackageError
+    
+    must_be_str_dict = [
+        hashes, misc
+    ]
 
-def metapackage(structure):
-    """ Validates a metapackage's structure.
-    Raises MetaPackageError in case it is invalid. """
-    try:
-        basicpackage(structure)
-    except BasicPackageError:
-        raise MetaPackageError
-
-    if structure['relationships']['depends'] is None:
-        raise MetaPackageError
+    for element in must_be_str_dict:
+        if element is not None:
+            if not isinstance(element, dict):
+                raise PackageError
+            for subelement in element.iterkeys():
+                if not isinstance(subelement, str):
+                    raise PackageError
+                elif not isinstance(element[subelement], str):
+                    raise PackageError
 
 class ConfigurationError(Exception):
     """ Indicates there is an error in a configuration structure. """

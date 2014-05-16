@@ -1,0 +1,26 @@
+---
+
+libbluray-src:
+  0.4.0:
+    amd64:
+      hashes:
+        sha1: 97d448ad5e3bba37e06dc0d459f90f11e505bb61
+      files:
+        static: null
+      depends: null
+      conflicts: null
+      replaces: null
+      provides: null
+      groups: null
+      flags: null
+      information:
+        maintainers:
+          - Martin Jungblut Schreiner
+        tags:
+          - library
+          - source
+          - blu-ray
+          - videolan
+        misc:
+          Website: http://www.videolan.org/developers/libbluray.html
+          Description: Open-source library designed for blu-ray discs playback.

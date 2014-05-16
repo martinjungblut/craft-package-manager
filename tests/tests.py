@@ -70,9 +70,10 @@ class Configuration_Tests(unittest.TestCase):
 
 class Validate_Tests(unittest.TestCase):
     def test_repository(self):
-        for working in glob('validate/working*.yml'):
+        for working in glob('validate/package/working*.yml'):
             self.assertTrue(craft.validate.repository(craft.load.yaml(working)))
-        self.assertRaises(craft.validate.PackageError, craft.validate.repository, craft.load.yaml('validate/not_working1.yml'))
+        for not_working in glob('validate/package/not_working*.yml'):
+            self.assertRaises(craft.validate.PackageError, craft.validate.repository, craft.load.yaml(not_working))
 
 if __name__ == '__main__':
     unittest.main()
