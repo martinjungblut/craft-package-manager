@@ -20,5 +20,5 @@ groups:
   - base
   - xorg
 
-fakeroot: /home/martin/University/craft/craft-package-manager/fakeroot
-fakedb: /home/martin/University/craft/craft-package-manager/fakedb
+root: /home/martin/University/craft/craft-package-manager/root
+db: /home/martin/University/craft/craft-package-manager/db

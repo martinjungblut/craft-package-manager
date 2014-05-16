@@ -1,5 +1,8 @@
 """ Interface for loading Craft-related files. """
 
+# Standard library imports
+from glob import iglob
+
 # Third-party imports
 import yaml as libyaml
 
@@ -7,7 +10,7 @@ import yaml as libyaml
 import validate
 from configuration import Configuration
 from repository import Repository
-from units import Package, MetaPackage, VirtualPackage, Group
+from units import Package, VirtualPackage, Group
 
 class YAMLError(Exception):
     """ Abstracts libyaml.YAMLError in a native Craft exception. """
@@ -26,53 +29,63 @@ def yaml(file_path):
     finally:
         file_handle.close()
 
-def repository(file_path):
-    """ Opens a repository definition file, parses it,
-    validates it and returns a Repository object.
-    Raises IOError in case the file could not be read.
-    Raises YAMLError in case the file is not a valid YAML file.
-    Raises RepositoryError in case the file is semantically invalid. """
-    definition = yaml(file_path)
-    validate.repository(definition)
+def repositories(directory):
+    """ Opens all repositories' definition files, parses them,
+    validates them and returns a Repository object containing all
+    their respective units.
+    Raises IOError in case one of their files could not be read.
+    Raises YAMLError in case one of their files is not a valid YAML file.
+    Raises RepositoryError in case one of their files is
+    semantically invalid. """
 
     units = []
     groups = {}
     virtuals = {}
 
-    for name in definition.iterkeys():
-        for version in definition[name].iterkeys():
-            for architecture in definition[name][version].iterkeys():
-                data = definition[name][version][architecture]
-                package = Package(name, version, architecture)
-                if data['depends']:
-                    for dependency in data['depends']:
-                        package.depends(dependency)
-                if data['conflicts']:
-                    for conflict in data['conflicts']:
-                        package.conflicts(conflict)
-                if data['provides']:
-                    for virtual in data['provides']:
-                        package.provides(virtual)
-                        try:
-                            virtuals[virtual].provided_by(package)
-                        except KeyError:
-                            virtuals[virtual] = VirtualPackage(virtual)
-                            virtuals[virtual].provided_by(package)
-                if data['groups']:
-                    for group in data['groups']:
-                        package.in_group(group)
-                        try:
-                            groups[group].add(package)
-                        except KeyError:
-                            groups[group] = Group(group)
-                            groups[group].add(package)
-                if data['information']['tags']:
-                    for tag in data['information']['tags']:
-                        package.tag(tag)
-                if data['information']['misc']:
-                    for key in data['information']['misc'].iterkeys():
-                        package.misc(key, data['information']['misc'][key])
-                units.append(package)
+    for repository in iglob(directory+"/repositories/*/"):
+        definition = yaml(repository+'metadata.yml')
+        validate.repository(definition)
+
+        for name in definition.iterkeys():
+            for version in definition[name].iterkeys():
+                for architecture in definition[name][version].iterkeys():
+                    data = definition[name][version][architecture]
+                    package = Package(name, version, architecture)
+                    if data['hashes'] is not None:
+                        package.hashes = data['hashes']
+                    if data['files']['static'] is not None:
+                        package.files = data['files']
+                    if data['depends'] is not None:
+                        for dependency in data['depends']:
+                            package.depend(dependency)
+                    if data['conflicts'] is not None:
+                        for conflict in data['conflicts']:
+                            package.conflict(conflict)
+                    if data['provides'] is not None:
+                        for virtual in data['provides']:
+                            package.provide(virtual)
+                            try:
+                                virtuals[virtual].provided_by(package)
+                            except KeyError:
+                                virtuals[virtual] = VirtualPackage(virtual)
+                                virtuals[virtual].provided_by(package)
+                    if data['groups'] is not None:
+                        for group in data['groups']:
+                            package.in_group(group)
+                            try:
+                                groups[group].add(package)
+                            except KeyError:
+                                groups[group] = Group(group)
+                                groups[group].add(package)
+                    if data['flags'] is not None:
+                        package.flags = data['flags']
+                    if data['information']['maintainers'] is not None:
+                        package.maintainers = data['information']['maintainers']
+                    if data['information']['tags'] is not None:
+                        package.tags = data['information']['tags']
+                    if data['information']['misc'] is not None:
+                        package.misc = data['information']['misc']
+                    units.append(package)
 
     for group in groups.iterkeys():
         units.append(groups[group])

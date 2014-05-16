@@ -75,7 +75,7 @@ def package(structure):
             for subelement in element:
                 if not isinstance(subelement, str):
                     raise PackageError
-    
+
     must_be_str_dict = [
         hashes, misc
     ]
