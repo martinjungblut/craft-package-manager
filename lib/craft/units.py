@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 
 class Unit(object):
     """ Base unit. """
+
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -73,13 +74,15 @@ class Package(Unit):
 
     def depend(self, dependency):
         """ Specifies this package depends on one or more other packages. """
-        self.dependencies.append(dependency)
+        dependency = str(dependency).lower()
+        if self.dependencies.count(dependency) == 0:
+            self.dependencies.append(dependency)
 
     def does_depend(self, dependency=False):
-        """ If dependency is specified, check whether this package
+        """ If dependency is specified, checks whether this package
                 depends on some other unit.
-                Return True if positive, False otherwise.
-            If dependency is not specified, return the appropriate
+                Returns True if positive, False otherwise.
+            If dependency is not specified, returns the appropriate
                 list of dependencies. """
         if dependency:
             try:
@@ -93,13 +96,15 @@ class Package(Unit):
     def conflict(self, conflict):
         """ Specifies this package conflicts with one or more
         other packages. """
-        self.conflicts.append(conflict)
+        conflict = str(conflict).lower()
+        if self.conflicts.count(conflict) == 0:
+            self.conflicts.append(conflict)
 
     def does_conflict(self, conflict=False):
-        """ If conflict is specified, check whether this package
+        """ If conflict is specified, checks whether this package
                 conflicts with some other unit.
-                Return True if positive, False otherwise.
-            If conflict is not specified, return the appropriate
+                Returns True if positive, False otherwise.
+            If conflict is not specified, returns the appropriate
                 list of conflicts. """
         if conflict:
             try:
@@ -112,15 +117,18 @@ class Package(Unit):
 
     def replace(self, replacement):
         """ Specifies this package replaces one or more other packages. """
-        self.replaces.append(replacement)
+        replacement = str(replacement).lower()
+        if self.replaces.count(replacement) == 0:
+            self.replaces.append(replacement)
 
     def does_replace(self, replacement=False):
-        """ If replacement is specified, check whether this package
+        """ If replacement is specified, checks whether this package
                 replaces some other unit.
-                Return True if positive, False otherwise.
-            If replacement is not specified, return the appropriate
+                Returns True if positive, False otherwise.
+            If replacement is not specified, returns the appropriate
                 list of replacements. """
         if replacement:
+            replacement = str(replacement).lower()
             try:
                 self.replaces.index(replacement)
                 return True
@@ -132,15 +140,18 @@ class Package(Unit):
     def provide(self, virtual):
         """ Specifies this package provides one or more
         virtual packages. """
-        self.provides.append(virtual)
+        virtual = str(virtual).lower()
+        if self.provides.count(virtual) == 0:
+            self.provides.append(virtual)
 
     def does_provide(self, virtual=False):
-        """ If virtual is specified, check whether this package
+        """ If virtual is specified, checks whether the package
                 provides that virtual package.
-                Return True if positive, False otherwise.
-            If virtual is not specified, return the appropriate
+                Returns True if positive, False otherwise.
+            If virtual is not specified, returns the appropriate
                 list of provided virtual packages. """
         if virtual:
+            virtual = str(virtual).lower()
             try:
                 self.provides.index(virtual)
                 return True
@@ -152,6 +163,7 @@ class Package(Unit):
     def has_tag(self, tag):
         """ Checks whether or not this package has a specific tag.
             Return True if positive, False otherwise. """
+        tag = str(tag).lower()
         try:
             self.tags.index(tag)
             return True
@@ -161,15 +173,24 @@ class Package(Unit):
     def has_flag(self, flag):
         """ Checks whether or not this package has a specific flag.
             Return True if positive, False otherwise. """
+        flag = str(flag).lower()
         try:
             self.flags.index(flag)
             return True
         except ValueError:
             return False
 
+    def add_to_group(self, group):
+        """ Adds the package to a specific group in case it is
+        not already in that group. """
+        group = str(group).lower()
+        if self.groups.count(group) == 0:
+            self.groups.append(group)
+
     def is_in_group(self, group):
         """ Checks whether or not this package is in a specific group.
             Return True if positive, False otherwise. """
+        group = str(group).lower()
         try:
             self.groups.index(group)
             return True

@@ -14,26 +14,26 @@ def repository(structure):
     if not isinstance(structure, dict):
         raise RepositoryError
 
-    for element in structure.iterkeys():
-        if not isinstance(element, str):
+    for name in structure.iterkeys():
+        if not isinstance(name, str):
             raise RepositoryError
-        elif not isinstance(structure[element], dict):
+        elif not isinstance(structure[name], dict):
             raise RepositoryError
 
-        for version in structure[element].iterkeys():
+        for version in structure[name].iterkeys():
             if not isinstance(version, str) and not isinstance(version, float):
                 raise RepositoryError
-            elif not isinstance(structure[element][version], dict):
+            elif not isinstance(structure[name][version], dict):
                 raise RepositoryError
 
-            for architecture in structure[element][version].iterkeys():
+            for architecture in structure[name][version].iterkeys():
                 if not isinstance(architecture, str):
                     raise RepositoryError
-                elif not isinstance(structure[element][version][architecture], dict):
+                elif not isinstance(structure[name][version][architecture], dict):
                     raise RepositoryError
 
                 try:
-                    package(structure[element][version][architecture])
+                    package(structure[name][version][architecture])
                 except PackageError:
                     raise
 
@@ -45,6 +45,7 @@ class PackageError(Exception):
 
 def package(structure):
     """ Validates a package's structure.
+    Returns True on success.
     Raises PackageError in case it is invalid. """
 
     try:
@@ -89,6 +90,8 @@ def package(structure):
                     raise PackageError
                 elif not isinstance(element[subelement], str):
                     raise PackageError
+
+    return True
 
 class ConfigurationError(Exception):
     """ Indicates there is an error in a configuration structure. """
