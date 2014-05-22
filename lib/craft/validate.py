@@ -157,13 +157,13 @@ def configuration(structure):
         raise ConfigurationError
 
     try:
-        fakedb = structure['fakedb']
-        fakeroot = structure['fakeroot']
+        db = structure['db']
+        root = structure['root']
     except KeyError:
         raise ConfigurationError
-    if fakedb is not None and not isinstance(fakedb, str):
+    if db is not None and not isinstance(db, str):
         raise ConfigurationError
-    elif fakeroot is not None and not isinstance(fakeroot, str):
+    elif root is not None and not isinstance(root, str):
         raise ConfigurationError
 
     return True

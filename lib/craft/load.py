@@ -16,13 +16,13 @@ class YAMLError(Exception):
     """ Abstracts libyaml.YAMLError in a native Craft exception. """
     pass
 
-def yaml(file_path):
-    """ Opens a YAML file, parses it and returns its structure.
+def yaml(filepath):
+    """ Opens a YAML file, parses it and returns its data.
     Raises YAMLError in case the file is not a valid YAML file.
     Raises IOError in case the file could not be read. """
 
     try:
-        file_handle = open(file_path)
+        file_handle = open(filepath)
     except IOError:
         raise
 
@@ -33,9 +33,9 @@ def yaml(file_path):
     finally:
         file_handle.close()
 
-def repository(file_path, name):
+def repository(filepath, name):
     """ Opens a repository definition file, parses it,
-    validates it and returns a Repository object containing all its units.
+    validates it and returns a Set object containing all its units.
     Name is used as the repository's name.
     Raises IOError in case the file could not be read.
     Raises YAMLError in case the file is not a valid YAML file.
@@ -47,7 +47,7 @@ def repository(file_path, name):
     virtuals = {}
 
     try:
-        definition = yaml(file_path)
+        definition = yaml(filepath)
         validate.repository(definition)
     except IOError:
         raise
@@ -56,11 +56,11 @@ def repository(file_path, name):
     except validate.RepositoryError:
         raise
 
-    for name in definition.iterkeys():
-        for version in definition[name].iterkeys():
-            for architecture in definition[name][version].iterkeys():
-                data = definition[name][version][architecture]
-                package = Package(name, version, architecture)
+    for packagename in definition.iterkeys():
+        for version in definition[packagename].iterkeys():
+            for architecture in definition[packagename][version].iterkeys():
+                data = definition[packagename][version][architecture]
+                package = Package(packagename, version, architecture)
                 if data['hashes'] is not None:
                     package.hashes = data['hashes']
                 if data['files']['static'] is not None:
@@ -103,7 +103,7 @@ def repository(file_path, name):
     for virtual in virtuals.iterkeys():
         units.append(virtuals[virtual])
 
-    return Repository(units, name)
+    return Set(name, units)
 
 class WorldError(Exception):
     """ Raised if there are no enabled repositories. """
@@ -111,7 +111,8 @@ class WorldError(Exception):
 
 def world(directory):
     """ Checks for enabled repositories in directory,
-    validates them and returns a World object.
+    validates them and returns a Set object containing all
+    enabled repositories.
     Raises IOError in case one of their files could not be read.
     Raises YAMLError in case one of their files is not a valid YAML file.
     Raises validate.RepositoryError in case one of their files is
@@ -126,14 +127,16 @@ def world(directory):
 
     for directory in directories:
         try:
-            current = repository(directory+'metadata.yml', directory)
+            name = directory.split('/')
+            name = name[len(name)-2]
+            current = repository(directory+'metadata.yml', name)
         except validate.RepositoryError:
             raise
         repositories.append(current)
 
-    return World(repositories)
+    return Set('world', [], repositories)
 
-def configuration(file_path):
+def configuration(filepath):
     """ Opens a configuration file, parses it,
     validates it and returns a Configuration object.
     Raises IOError in case the file could not be read.
@@ -142,7 +145,7 @@ def configuration(file_path):
     semantically invalid. """
 
     try:
-        definition = yaml(file_path)
+        definition = yaml(filepath)
         validate.configuration(definition)
     except IOError:
         raise

@@ -10,9 +10,12 @@ class NoMatchFound(Exception):
 class Set(object):
     """ Represents a set of units or sets themselves. """
 
-    def __init__(self, name, units = [], sets = [])
-        """ units must be a list of Unit. TypeError is raised otherwise.
-        sets must be a list of Set. TypeError is raised otherwise. """
+    def __init__(self, name, units = [], sets = []):
+        """ units must be a list of Unit, or an empty list.
+        TypeError is raised otherwise.
+        sets must be a list of Set, or an empty list.
+        TypeError is raised otherwise. """
+
         if not isinstance(units, list):
             raise TypeError
         if not isinstance(sets, list):
@@ -28,18 +31,15 @@ class Set(object):
         self.sets = sets
 
     def search(self, pattern):
-        """ Retrieves a list of units or sets based on a pattern, matching
-        a substring of each element's name.
-        NoMatchFound is raised in case no units or sets were found matching
+        """ Retrieves a list of units based on a pattern, matching
+        a substring of each unit's name.
+        NoMatchFound is raised in case no units were found matching
         the specified pattern. """
 
         found = []
         for unit in self.units:
             if unit.name.find(pattern) > -1:
                 found.append(unit)
-        for set in self.sets:
-            if set.name.find(pattern) > -1:
-                found.append(set)
         if len(found) > 0:
             return found
         else:
