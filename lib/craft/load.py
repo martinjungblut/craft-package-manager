@@ -109,8 +109,8 @@ class WorldError(Exception):
     """ Raised if there are no enabled repositories. """
     pass
 
-def world(directory):
-    """ Checks for enabled repositories in directory,
+def world(configuration):
+    """ Checks for enabled repositories in a given Configuration object,
     validates them and returns a Set object containing all
     enabled repositories.
     Raises IOError in case one of their files could not be read.
@@ -120,7 +120,7 @@ def world(directory):
     Raises WorldError in case there are no enabled repositories. """
 
     repositories = []
-    directories = glob(directory+'/repositories/*/')
+    directories = glob(configuration.db+'/world/*/')
 
     if len(directories) == 0:
         raise WorldError
