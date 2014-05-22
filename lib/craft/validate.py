@@ -139,6 +139,8 @@ def configuration(structure):
             raise ConfigurationError
         if not isinstance(architectures['enabled'], list):
             raise ConfigurationError
+        if not architectures['default'] in architectures['enabled']:
+            raise ConfigurationError
     except KeyError:
         raise ConfigurationError
     for architecture in architectures['enabled']:
