@@ -31,20 +31,23 @@ class Set(object):
         self.units = units
         self.sets = sets
 
-    def search(self, pattern, configuration):
-        """ Retrieves a list of units based on a pattern, matching
-        a substring of each unit's name.
-        NoMatchFound is raised in case no units were found matching
-        the specified pattern. """
+    def search(self, configuration, substring):
+        """ Retrieves a list of units based on a substring
+        match of each unit's name. A Configuration object is used for
+        filtering units.
+        Raises NoMatchFound in case no units were found matching
+        the specified substring.
+        Raises TypeError in case configuration is not a Configuration
+        object. """
 
         if not isinstance(configuration, Configuration):
             raise TypeError
 
-        pattern = str(pattern).lower()
+        substring = str(substring).lower()
         found = []
         for unit in self.units:
             append = False
-            if unit.name.find(pattern) > -1:
+            if unit.name.find(substring) > -1:
                 append = True
                 if not configuration.is_unit_allowed(unit):
                     append = False

@@ -30,6 +30,9 @@ class Configuration(object):
         return self.architectures['default']
 
     def is_unit_allowed(self, unit):
+        """ Checks whether a specific unit is allowed
+        to be installed on the system. """
+
         if not isinstance(unit, Unit):
             raise TypeError
         if isinstance(unit, Package):

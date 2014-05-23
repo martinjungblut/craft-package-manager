@@ -7,19 +7,21 @@ from shutil import rmtree
 
 # Craft imports
 import load
-import errors
 import sets
 
-def highmerge(configuration, unit_names):
+class InstallError(Exception):
+    pass
+
+def install(configuration, unit_names):
     try:
         world = load.world(configuration)
     except load.WorldError:
-        errors.fatal("There are no enabled repositories.")
+        raise InstallError
     units = []
     for repository in world.sets:
         for unit_name in unit_names:
             try:
-                units = units + repository.search(unit_name, configuration)
+                units = units + repository.search(configuration, unit_name)
             except sets.NoMatchFound:
                 pass
     return units
@@ -30,7 +32,7 @@ def unmerge(unit_names):
 def download(units):
     pass
 
-def lowmerge(units):
+def _install(units):
     pass
 
 def clear(configuration):
@@ -40,15 +42,21 @@ def clear(configuration):
         except OSError:
             pass
 
+class SyncError(Exception):
+    pass
+
 def sync(configuration):
     clear(configuration)
     for name in configuration.repositories.iterkeys():
         repository = configuration.repositories[name]
         try:
             mkdir(configuration.db+'/world')
-            mkdir(configuration.db+'/world/'+name)
         except OSError:
             pass
+        try:
+            mkdir(configuration.db+'/world/'+name)
+        except OSError:
+            raise SyncError
         chdir(configuration.db+'/world/'+name)
         target = repository['target']+'/'+name+'/metadata.yml'
         handler = repository['handler']
