@@ -9,6 +9,7 @@ from shutil import rmtree
 import load
 import sets
 import env
+import error
 
 class InstallError(Exception):
     pass
@@ -91,10 +92,10 @@ def sync(configuration):
         if 'env' in repository:
             print(repository['env'])
             if not env.merge(repository['env']):
-                raise SyncError
+                error.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
         system(handler+' '+target)
         if 'env' in repository:
             if not env.purge(repository['env']):
-                raise SyncError
+                error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
 
     return True
