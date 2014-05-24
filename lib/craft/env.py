@@ -1,5 +1,8 @@
 """ Environment functions. """
 
+# Standard library imports
+from os import putenv, unsetenv
+
 def merge(env):
     """
     Merges variables to the current environment.
@@ -20,7 +23,7 @@ def merge(env):
         raise TypeError
     try:
         for variable, value in env.items():
-            os.putenv(variable, value)
+            putenv(variable, value)
         return True
     except:
         return False
@@ -47,7 +50,7 @@ def purge(env):
         raise TypeError
     try:
         for variable, value in env.items():
-            os.unsetenv(variable)
+            unsetenv(variable)
         return True
     except:
         return False

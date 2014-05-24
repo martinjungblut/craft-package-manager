@@ -86,9 +86,10 @@ def sync(configuration):
             chdir(configuration.db+'/world/'+name)
         except OSError:
             raise SyncError
-        target = repository['target']+'/'+name+'/metadata.yml'
+        target = repository['target']+'/metadata.yml'
         handler = repository['handler']
         if 'env' in repository:
+            print(repository['env'])
             if not env.merge(repository['env']):
                 raise SyncError
         system(handler+' '+target)
