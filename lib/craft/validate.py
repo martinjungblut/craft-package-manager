@@ -5,11 +5,20 @@ class RepositoryError(Exception):
     pass
 
 def repository(structure):
-    """ Validates a repository's structure.
-    Returns True on success.
-    Raises RepositoryError in case there is an error in its definition.
-    Raises PackageError in case there is an error in
-    a package's definition. """
+    """
+    Validates a Craft repository's structure.
+
+    Parameters
+        structure: data structure representing a Craft repository.
+    Raises
+        RepositoryError: if the structure does not properly represent
+        a Craft repository.
+        PackageError: if one of the repository's packages are not properly
+        defined in its structure.
+    Returns
+        True: if the structure properly represents a valid Craft repository's
+        definition.
+    """
 
     if not isinstance(structure, dict):
         raise RepositoryError
@@ -44,9 +53,18 @@ class PackageError(Exception):
     pass
 
 def package(structure):
-    """ Validates a package's structure.
-    Returns True on success.
-    Raises PackageError in case it is invalid. """
+    """
+    Validates a Craft package's structure.
+
+    Parameters
+        structure: data structure representing a Craft package.
+    Raises
+        PackageError: in case the structure does not represent a
+        valid Craft package.
+    Returns
+        True: if the structure properly represents a Craft package's
+        definition.
+    """
 
     try:
         hashes = structure['hashes']
@@ -98,9 +116,16 @@ class ConfigurationError(Exception):
     pass
 
 def configuration(structure):
-    """ Validates a configuration structure.
-    Returns True in case the structure is valid.
-    Raises ConfigurationError otherwise. """
+    """ Validates a Craft configuration's structure.
+
+    Parameters
+        structure: a data structure representing a Craft configuration.
+    Raises
+        ConfigurationError: if the structure does not properly
+        represent a Craft configuration.
+    Returns
+        True: if the structure properly represents a valid Craft configuration.
+     """
 
     if not isinstance(structure, dict):
         raise ConfigurationError
