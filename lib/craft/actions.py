@@ -5,11 +5,17 @@ from glob import glob
 from os import system, mkdir, chdir
 from shutil import rmtree
 
+# Third-party imports
+from yaml import dump
+
 # Craft imports
 import load
 import sets
 import env
 import error
+import archive
+from units import Package
+from configuration import Configuration
 
 class InstallError(Exception):
     pass
@@ -19,22 +25,57 @@ def install(configuration, unit_names):
         world = load.world(configuration)
     except load.WorldError:
         raise InstallError
-    units = []
+    packages = set()
     for repository in world.sets:
         for unit_name in unit_names:
             try:
-                units = units + repository.search(configuration, unit_name)
+                found = repository.search(configuration, unit_name)
+                for f in found:
+                    packages.add(f)
             except sets.NoMatchFound:
                 pass
-    return units
+    print("The following packages are going to be installed: ")
+    for package in packages:
+        print(package.name)
+    return True
+
+def _install(configuration, package, filepath):
+    if not isinstance(package, Package):
+        raise TypeError
+    elif not isinstance(configuration, Configuration):
+        raise TypeError
+    n = package.name
+    v = package.version
+    a = package.architecture
+    try:
+        mkdir(configuration.db+'/selected/')
+        mkdir(configuration.db+'/selected/'+n)
+        mkdir(configuration.db+'/selected/'+n+'/'+v)
+        mkdir(configuration.db+'/selected/'+n+'/'+v+'/'+a)
+    except OSError:
+        pass
+    try:
+        chdir(configuration.db+'/selected/'+n+'/'+v+'/'+a)
+    except OSError:
+        raise InstallError
+    files = archive.getfiles(filepath)
+    if not files:
+        raise InstallError
+    try:
+        files_dump = open('files.yml', 'w')
+        dump(files, files_dump, default_flow_style = False)
+    except IOError:
+        raise InstallError
+    finally:
+        files_dump.close()
+    if not archive.extract(filepath, configuration.root):
+        raise InstallError
+    return True
 
 def unmerge(unit_names):
     pass
 
 def download(units):
-    pass
-
-def _install(units):
     pass
 
 def ClearError(Exception):

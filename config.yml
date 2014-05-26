@@ -2,7 +2,7 @@
 ---
 
 repositories:
-  local-testing:
+  local:
     target: http://localhost/craft/local
     handler: wget -c
     #env:
