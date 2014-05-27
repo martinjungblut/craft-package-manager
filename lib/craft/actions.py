@@ -44,32 +44,45 @@ def _install(configuration, package, filepath):
         raise TypeError
     elif not isinstance(configuration, Configuration):
         raise TypeError
+
     n = package.name
     v = package.version
     a = package.architecture
+
     try:
-        mkdir(configuration.db+'/selected/')
-        mkdir(configuration.db+'/selected/'+n)
-        mkdir(configuration.db+'/selected/'+n+'/'+v)
-        mkdir(configuration.db+'/selected/'+n+'/'+v+'/'+a)
+        mkdir(configuration.db+'/installed/')
     except OSError:
         pass
     try:
-        chdir(configuration.db+'/selected/'+n+'/'+v+'/'+a)
+        mkdir(configuration.db+'/installed/'+n)
+    except OSError:
+        pass
+    try:
+        mkdir(configuration.db+'/installed/'+n+'/'+v)
+    except OSError:
+        pass
+    try:
+        mkdir(configuration.db+'/installed/'+n+'/'+v+'/'+a)
+        chdir(configuration.db+'/installed/'+n+'/'+v+'/'+a)
     except OSError:
         raise InstallError
+
     files = archive.getfiles(filepath)
     if not files:
         raise InstallError
     try:
         files_dump = open('files.yml', 'w')
         dump(files, files_dump, default_flow_style = False)
+        metadata_dump = open('metadata.yml', 'w')
+        dump(package, metadata_dump, default_flow_style = False)
     except IOError:
         raise InstallError
     finally:
         files_dump.close()
+        metadata_dump.close()
     if not archive.extract(filepath, configuration.root):
         raise InstallError
+
     return True
 
 def unmerge(unit_names):
