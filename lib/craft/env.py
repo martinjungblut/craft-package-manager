@@ -4,19 +4,22 @@
 from os import putenv, unsetenv
 
 def merge(env):
-    """
-    Merges variables to the current environment.
+    """ Merges variables to the current environment.
 
     Parameters
-        env: dictionary containing the variables' names
-        and values to be merged to the current environment.
+        env
+            dictionary containing the variables' names
+            and values to be merged to the current environment.
     Raises
-        TypeError: if env is not a dict.
+        TypeError
+            if env is not a dict.
     Returns
-        True: if all variables were successfully merged
-        to the environment.
-        False: immediately when a variable fails to be merged
-        to the environment.
+        True
+            if all variables were successfully merged
+            to the environment.
+        False
+            immediately when a variable fails to be merged
+            to the environment.
     """
 
     if not isinstance(env, dict):
@@ -29,27 +32,28 @@ def merge(env):
         return False
 
 def purge(env):
-    """
-    Purges variables from the current environment.
+    """ Purges variables from the current environment.
 
     Parameters
-        env: dictionary containing the variables' names
-        and values to be purged from the current environment.
-        Note that the values themselves are irrelevant here, since only
-        the env's keys will be used for purging.
+        env
+            list containing the variables' names
+            to be purged from the current environment.
     Raises
-        TypeError: if env is not a dict.
+        TypeError
+            if env is not a list.
     Returns
-        True: if all variables were successfully purged
-        from the environment.
-        False: immediately when a variable fails to be purged
-        from the environment.
+        True
+            if all variables were successfully purged
+            from the environment.
+        False
+            immediately when a variable fails to be purged
+            from the environment.
     """
 
-    if not isinstance(env, dict):
+    if not isinstance(env, list):
         raise TypeError
     try:
-        for variable, value in env.items():
+        for variable in env:
             unsetenv(variable)
         return True
     except:

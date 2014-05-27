@@ -22,11 +22,11 @@ class InstallError(Exception):
 
 def install(configuration, unit_names):
     try:
-        world = load.world(configuration)
-    except load.WorldError:
+        available = load.available(configuration)
+    except load.AvailableError:
         raise InstallError
     packages = set()
-    for repository in world.sets:
+    for repository in available.sets:
         for unit_name in unit_names:
             try:
                 found = repository.search(configuration, unit_name)
@@ -98,10 +98,11 @@ def clear(configuration):
     """ Clear local cache and repositories' metadata.
 
     Raises
-        ClearError if of failure.
+        ClearError
+            in case of failure.
     """
 
-    for directory in glob(configuration.db+'/world/*'):
+    for directory in glob(configuration.db+'/available/*'):
         try:
             rmtree(directory)
         except OSError:
@@ -111,19 +112,22 @@ class SyncError(Exception):
     pass
 
 def sync(configuration):
-    """
-    Synchronises enabled repositories from a Craft configuration.
+    """ Synchronises enabled repositories from a Craft configuration.
 
     Parameters
-        configuration: a Configuration object.
+        configuration
+            a Configuration object having the required data for performing
+            the synchronisation.
     Raises
-        SyncError: in case of failure related to the actual
-        synchronisation.
-        ClearError: if the internal clear() call fails and the previously set
-        local repository cache is not properly cleared up prior to the
-        actual synchronisation.
+        SyncError
+            in case of failure related to the actual synchronisation.
+        ClearError
+            if the internal clear() call fails and the previously set
+            local repository cache is not properly cleared up prior to the
+            actual synchronisation.
     Returns
-        True: if all repositories were successfully synchronised.
+        True
+            if all repositories were successfully synchronised.
     """
 
     try:
@@ -133,12 +137,12 @@ def sync(configuration):
     for name in configuration.repositories.iterkeys():
         repository = configuration.repositories[name]
         try:
-            mkdir(configuration.db+'/world')
+            mkdir(configuration.db+'/available')
         except OSError:
             pass
         try:
-            mkdir(configuration.db+'/world/'+name)
-            chdir(configuration.db+'/world/'+name)
+            mkdir(configuration.db+'/available/'+name)
+            chdir(configuration.db+'/available/'+name)
         except OSError:
             raise SyncError
         target = repository['target']+'/metadata.yml'
@@ -149,7 +153,7 @@ def sync(configuration):
                 error.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
         system(handler+' '+target)
         if 'env' in repository:
-            if not env.purge(repository['env']):
+            if not env.purge(repository['env'].keys()):
                 error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
 
     return True

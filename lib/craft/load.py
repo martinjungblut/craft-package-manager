@@ -18,8 +18,16 @@ class YAMLError(Exception):
 
 def yaml(filepath):
     """ Opens a YAML file, parses it and returns its data.
-    Raises YAMLError in case the file is not a valid YAML file.
-    Raises IOError in case the file could not be read. """
+
+    Parameters
+        filepath
+            file to be loaded.
+    Raises
+        YAMLError
+            if the file is not a valid YAML file.
+        IOError
+            if the file could not be read.
+    """
 
     try:
         file_handle = open(filepath)
@@ -34,13 +42,21 @@ def yaml(filepath):
         file_handle.close()
 
 def repository(filepath, name):
-    """ Opens a repository definition file, parses it,
-    validates it and returns a Set object containing all its units.
-    Name is used as the repository's name.
-    Raises IOError in case the file could not be read.
-    Raises YAMLError in case the file is not a valid YAML file.
-    Raises validate.RepositoryError in case the file is
-    semantically invalid. """
+    """ Loads a repository from a YAML file.
+
+    Parameters
+        filepath
+            file to be loaded.
+        name
+            used as the repository's name.
+    Raises
+        IOError
+            if the file could not be read.
+        YAMLError
+            if the file is not a valid YAML file.
+        validate.RepositoryError
+            if the file is semantically invalid.
+    """
 
     units = []
     groups = {}
@@ -105,25 +121,34 @@ def repository(filepath, name):
 
     return Set(name, units)
 
-class WorldError(Exception):
+class AvailableError(Exception):
     """ Raised if there are no enabled repositories. """
     pass
 
-def world(configuration):
-    """ Checks for enabled repositories in a given Configuration object,
-    validates them and returns a Set object containing all
-    enabled repositories.
-    Raises IOError in case one of their files could not be read.
-    Raises YAMLError in case one of their files is not a valid YAML file.
-    Raises validate.RepositoryError in case one of their files is
-    semantically invalid.
-    Raises WorldError in case there are no enabled repositories. """
+def available(configuration):
+    """ Loads the 'available' set.
+
+    Parameters
+        configuration
+            Configuration object providing the necessary data.
+    Raises
+        IOError
+            in case one of their files could not be read.
+        YAMLError
+            in case one of their files is not a valid YAML file.
+        validate.RepositoryError
+            in case one of their files is semantically invalid.
+        AvailableError
+            in case there are no enabled repositories.
+    Returns
+        A Set object having all enabled repositories as sub-sets.
+    """
 
     repositories = []
-    directories = glob(configuration.db+'/world/*/')
+    directories = glob(configuration.db+'/available/*/')
 
     if len(directories) == 0:
-        raise WorldError
+        raise AvailableError
 
     for directory in directories:
         try:
@@ -134,15 +159,22 @@ def world(configuration):
             raise
         repositories.append(current)
 
-    return Set('world', [], repositories)
+    return Set('available', [], repositories)
 
 def configuration(filepath):
-    """ Opens a configuration file, parses it,
-    validates it and returns a Configuration object.
-    Raises IOError in case the file could not be read.
-    Raises YAMLError in case the file is not a valid YAML file.
-    Raises validate.ConfigurationError in case the file is
-    semantically invalid. """
+    """ Loads a Configuration object from a YAML file.
+
+    Parameters
+        filepath
+            path of the YAML file to be loaded.
+    Raises
+        IOError
+            in case the file could not be read.
+        YAMLError
+            in case the file is not a valid YAML file.
+        validate.ConfigurationError
+            in case the file is semantically invalid.
+    """
 
     try:
         definition = yaml(filepath)

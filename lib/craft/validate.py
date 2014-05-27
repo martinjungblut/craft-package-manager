@@ -1,23 +1,25 @@
-""" Interface for validating Craft-related data structures. """
+""" Functions for validating Craft data structures. """
 
 class RepositoryError(Exception):
     """ Indicates there is an error in a repository's structure. """
     pass
 
 def repository(structure):
-    """
-    Validates a Craft repository's structure.
+    """ Validates a Craft repository's structure.
 
     Parameters
-        structure: data structure representing a Craft repository.
+        structure
+            data structure representing a Craft repository.
     Raises
-        RepositoryError: if the structure does not properly represent
-        a Craft repository.
-        PackageError: if one of the repository's packages are not properly
-        defined in its structure.
+        RepositoryError
+            if the structure does not properly represent a Craft repository.
+        PackageError
+            if one of the repository's packages are not properly defined
+            in its structure.
     Returns
-        True: if the structure properly represents a valid Craft repository's
-        definition.
+        True
+            if the structure properly represents a valid Craft repository's
+            definition.
     """
 
     if not isinstance(structure, dict):
@@ -53,17 +55,17 @@ class PackageError(Exception):
     pass
 
 def package(structure):
-    """
-    Validates a Craft package's structure.
+    """ Validates a Craft package's structure.
 
     Parameters
-        structure: data structure representing a Craft package.
+        structure
+            data structure representing a Craft package.
     Raises
-        PackageError: in case the structure does not represent a
-        valid Craft package.
+        PackageError
+            in case the structure does not represent a valid Craft package.
     Returns
-        True: if the structure properly represents a Craft package's
-        definition.
+        True
+            if the structure properly represents a Craft package's definition.
     """
 
     try:
@@ -119,13 +121,15 @@ def configuration(structure):
     """ Validates a Craft configuration's structure.
 
     Parameters
-        structure: a data structure representing a Craft configuration.
+        structure
+            a data structure representing a Craft configuration.
     Raises
-        ConfigurationError: if the structure does not properly
-        represent a Craft configuration.
+        ConfigurationError
+            if the structure does not properly represent a Craft configuration.
     Returns
-        True: if the structure properly represents a valid Craft configuration.
-     """
+        True
+            if the structure properly represents a valid Craft configuration.
+    """
 
     if not isinstance(structure, dict):
         raise ConfigurationError

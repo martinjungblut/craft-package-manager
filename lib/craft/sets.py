@@ -12,10 +12,23 @@ class Set(object):
     """ Represents a set of units or sets themselves. """
 
     def __init__(self, name, units = [], sets = []):
-        """ units must be a list of Unit, or an empty list.
-        TypeError is raised otherwise.
-        sets must be a list of Set, or an empty list.
-        TypeError is raised otherwise. """
+        """ Constructor.
+
+        Parameters
+            name
+                name to be used for the set.
+            units
+                list of units to be automatically added to the set.
+                May be an empty list.
+            sets
+                list of sets to be automatically added to the set.
+                May be an empty list.
+        Raises
+            TypeError
+                if units is not a list of Unit or an empty list.
+            TypeError
+                if sets is not a list of Set or an empty list.
+        """
 
         if not isinstance(units, list):
             raise TypeError
@@ -32,13 +45,20 @@ class Set(object):
         self.sets = sets
 
     def search(self, configuration, substring):
-        """ Retrieves a list of units based on a substring
-        match of each unit's name. A Configuration object is used for
-        filtering units.
-        Raises NoMatchFound in case no units were found matching
-        the specified substring.
-        Raises TypeError in case configuration is not a Configuration
-        object. """
+        """ Retrieves a list of units based on a substring match of each
+        unit's name.
+
+        Parameters
+            configuration
+                A Configuration object, used for unit filtering.
+            substring
+                string to be searched for.
+        Raises
+            NoMatchFound
+                if no units could be found matching the specified substring.
+            TypeError
+                if configuration is not a Configuration object.
+        """
 
         if not isinstance(configuration, Configuration):
             raise TypeError

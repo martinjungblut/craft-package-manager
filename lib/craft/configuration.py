@@ -6,9 +6,13 @@ class Configuration(object):
     """ Represents Craft's configuration. """
 
     def __init__(self, structure):
-        """ structure must be a valid Python representation
-        of Craft's configuration file, previously loaded
-        using load.configuration() """
+        """ Constructor.
+
+        Parameters
+            structure
+                must be a valid Python representation of Craft's
+                configuration.
+        """
 
         self.repositories = structure['repositories']
         self.architectures = structure['architectures']
@@ -17,7 +21,17 @@ class Configuration(object):
         self.root = structure['root']
 
     def has_architecture(self, architecture):
-        """ Returns True if the architecture is enabled, False otherwise. """
+        """ Checks whether a specific architecture is enabled.
+
+        Parameters
+            architecture
+                the architecture to be checked.
+        Returns
+            True
+                in case the architecture is enabled.
+            False
+                in case the architecture is not enabled.
+        """
 
         if architecture in self.architectures['enabled']:
             return True
@@ -30,8 +44,17 @@ class Configuration(object):
         return self.architectures['default']
 
     def is_unit_allowed(self, unit):
-        """ Checks whether a specific unit is allowed
-        to be installed on the system. """
+        """ Checks whether a specific unit is allowed to be installed.
+
+        Parameters
+            unit
+                Unit to be checked.
+        Returns
+            True
+                in case the unit may be installed.
+            False
+                in case the unit may not be installed.
+        """
 
         if not isinstance(unit, Unit):
             raise TypeError
