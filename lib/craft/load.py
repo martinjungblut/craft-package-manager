@@ -41,7 +41,7 @@ def yaml(filepath):
     finally:
         filehandle.close()
 
-def repository(filepath, name):
+def _repository(filepath, name):
     """ Loads a repository from a YAML file.
 
     Parameters
@@ -154,16 +154,12 @@ def available(configuration):
         try:
             name = directory.split('/')
             name = name[len(name)-2]
-            current = repository(directory+'metadata.yml', name)
+            current = _repository(directory+'metadata.yml', name)
         except validate.SemanticError:
             raise
         repositories.append(current)
 
     return Set('available', [], repositories)
-
-class InstalledError(Exception):
-    """ Raised if there is an error in the 'installed' set. """
-    pass
 
 def installed(configuration):
     """ Loads the 'installed' set.
@@ -185,7 +181,7 @@ def installed(configuration):
     filepath = configuration.db+'/installed/metadata.yml'
 
     try:
-        return repository(filepath, 'installed')
+        return _repository(filepath, 'installed')
     except IOError:
         raise
     except YAMLError:
