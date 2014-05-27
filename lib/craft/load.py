@@ -30,16 +30,16 @@ def yaml(filepath):
     """
 
     try:
-        file_handle = open(filepath)
+        filehandle = open(filepath)
     except IOError:
         raise
 
     try:
-        return libyaml.load(file_handle)
+        return libyaml.load(filehandle)
     except libyaml.YAMLError:
         raise YAMLError
     finally:
-        file_handle.close()
+        filehandle.close()
 
 def repository(filepath, name):
     """ Loads a repository from a YAML file.
