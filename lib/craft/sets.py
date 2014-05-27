@@ -58,6 +58,9 @@ class Set(object):
                 if no units could be found matching the specified substring.
             TypeError
                 if configuration is not a Configuration object.
+        Returns
+            list
+                having all units found.
         """
 
         if not isinstance(configuration, Configuration):

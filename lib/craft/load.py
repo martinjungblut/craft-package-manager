@@ -27,6 +27,9 @@ def yaml(filepath):
             if the file is not a valid YAML file.
         IOError
             if the file could not be read.
+    Returns
+        object
+            The appropriate Python representation of the file's data.
     """
 
     try:
@@ -56,6 +59,9 @@ def _repository(filepath, name):
             if the file is not a valid YAML file.
         validate.SemanticError
             if the file is semantically invalid.
+    Returns
+        Set
+            A Set object representing the repository.
     """
 
     units = []
@@ -202,6 +208,8 @@ def configuration(filepath):
             in case the file is not a valid YAML file.
         validate.SemanticError
             in case the file is semantically invalid.
+    Returns
+        Configuration
     """
 
     try:
