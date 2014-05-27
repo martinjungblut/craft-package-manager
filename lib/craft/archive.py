@@ -38,7 +38,7 @@ def getfiles(filepath):
 
     return files
 
-def extract(filepath, destination="."):
+def extract(filepath, destination):
     """ Extract a package file to a specified destination.
 
     Returns
@@ -50,7 +50,9 @@ def extract(filepath, destination="."):
     try:
         handle = archive_open(filepath)
         handle.extractall(destination)
-        handle.close()
-        return True
     except IOError:
         return False
+    finally:
+        handle.close()
+
+    return True

@@ -44,14 +44,14 @@ def yaml(filepath):
     finally:
         filehandle.close()
 
-def _repository(filepath, name):
-    """ Loads a repository from a YAML file.
+def _set(filepath, name):
+    """ Loads a set from a YAML file.
 
     Parameters
         filepath
             file to be loaded.
         name
-            used as the repository's name.
+            used as the set's name.
     Raises
         IOError
             if the file could not be read.
@@ -61,7 +61,6 @@ def _repository(filepath, name):
             if the file is semantically invalid.
     Returns
         Set
-            A Set object representing the repository.
     """
 
     units = []
@@ -70,7 +69,7 @@ def _repository(filepath, name):
 
     try:
         definition = yaml(filepath)
-        validate.repository(definition)
+        validate.set(definition)
     except IOError:
         raise
     except YAMLError:
@@ -139,11 +138,11 @@ def available(configuration):
             Configuration object providing the necessary data.
     Raises
         IOError
-            in case a repository's metadata file could not be read.
+            in case a set's metadata file could not be read.
         YAMLError
-            in case a repository's metadata file is not a valid YAML file.
+            in case a set's metadata file is not a valid YAML file.
         validate.SemanticError
-            in case a repository's metadata file is semantically invalid.
+            in case a set's metadata file is semantically invalid.
         AvailableError
             in case there are no enabled repositories.
     Returns
@@ -160,7 +159,7 @@ def available(configuration):
         try:
             name = directory.split('/')
             name = name[len(name)-2]
-            current = _repository(directory+'metadata.yml', name)
+            current = _set(directory+'metadata.yml', name)
         except validate.SemanticError:
             raise
         repositories.append(current)
@@ -187,7 +186,7 @@ def installed(configuration):
     filepath = configuration.db+'/installed/metadata.yml'
 
     try:
-        return _repository(filepath, 'installed')
+        return _set(filepath, 'installed')
     except IOError:
         raise
     except YAMLError:

@@ -4,21 +4,21 @@ class SemanticError(Exception):
     """ Raised if there is a semantic error in an object or data structure. """
     pass
 
-def repository(structure):
-    """ Validates a Craft repository's structure.
+def set(structure):
+    """ Validates a Craft set's structure.
 
     Parameters
         structure
-            data structure representing a Craft repository.
+            data structure representing a Craft set.
     Raises
         SemanticError
-            if the structure does not properly represent a Craft repository.
+            if the structure does not properly represent a Craft set.
         SemanticError
-            if one of the repository's packages are not properly defined
+            if one of the set's packages are not properly defined
             in its structure.
     Returns
         True
-            if the structure properly represents a valid Craft repository's
+            if the structure properly represents a valid Craft set's
             definition.
     """
 

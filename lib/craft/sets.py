@@ -80,3 +80,28 @@ class Set(object):
             return found
         else:
             raise NoMatchFound
+
+    def get(self, configuration, name):
+        """ Retrieves a Unit by name.
+
+        Parameters
+            configuration
+                A Configuration object, used for unit filtering.
+            name
+                name to be searched for.
+        Raises
+            NoMatchFound
+                if no units could be found matching the specified name.
+        Returns
+            Unit
+        """
+        if not isinstance(configuration, Configuration):
+            raise TypeError
+
+        name = str(name).lower()
+
+        for unit in self.units:
+            if configuration.is_unit_allowed(unit):
+                if unit.name == name:
+                    return unit
+        raise NoMatchFound

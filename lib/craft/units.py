@@ -1,4 +1,4 @@
-""" Defines a collection of manageable units. """
+""" Manageable units. """
 
 # Standard library imports
 from abc import ABCMeta, abstractmethod
