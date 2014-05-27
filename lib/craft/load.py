@@ -54,7 +54,7 @@ def repository(filepath, name):
             if the file could not be read.
         YAMLError
             if the file is not a valid YAML file.
-        validate.RepositoryError
+        validate.SemanticError
             if the file is semantically invalid.
     """
 
@@ -69,7 +69,7 @@ def repository(filepath, name):
         raise
     except YAMLError:
         raise
-    except validate.RepositoryError:
+    except validate.SemanticError:
         raise
 
     for packagename in definition.iterkeys():
@@ -122,7 +122,7 @@ def repository(filepath, name):
     return Set(name, units)
 
 class AvailableError(Exception):
-    """ Raised if there are no enabled repositories. """
+    """ Raised if there is an error in the 'available' set. """
     pass
 
 def available(configuration):
@@ -133,15 +133,15 @@ def available(configuration):
             Configuration object providing the necessary data.
     Raises
         IOError
-            in case one of their files could not be read.
+            in case a repository's metadata file could not be read.
         YAMLError
-            in case one of their files is not a valid YAML file.
-        validate.RepositoryError
-            in case one of their files is semantically invalid.
+            in case a repository's metadata file is not a valid YAML file.
+        validate.SemanticError
+            in case a repository's metadata file is semantically invalid.
         AvailableError
             in case there are no enabled repositories.
     Returns
-        A Set object having all enabled repositories as sub-sets.
+        'available' Set object having all enabled repositories as sub-sets.
     """
 
     repositories = []
@@ -155,11 +155,43 @@ def available(configuration):
             name = directory.split('/')
             name = name[len(name)-2]
             current = repository(directory+'metadata.yml', name)
-        except validate.RepositoryError:
+        except validate.SemanticError:
             raise
         repositories.append(current)
 
     return Set('available', [], repositories)
+
+class InstalledError(Exception):
+    """ Raised if there is an error in the 'installed' set. """
+    pass
+
+def installed(configuration):
+    """ Loads the 'installed' set.
+
+    Parameters
+        configuration
+            Configuration object providing the necessary data.
+    Raises
+        IOError
+            in case /installed/metadata.yml could not be found.
+        YAMLError
+            in case /installed/metadata.yml is not a valid YAML file.
+        validate.SemanticError
+            in case /installed/metadata.yml is semantically invalid.
+    Returns
+        'installed' Set object having all installed units.
+    """
+
+    filepath = configuration.db+'/installed/metadata.yml'
+
+    try:
+        return repository(filepath, 'installed')
+    except IOError:
+        raise
+    except YAMLError:
+        raise
+    except validate.SemanticError:
+        raise
 
 def configuration(filepath):
     """ Loads a Configuration object from a YAML file.
@@ -172,7 +204,7 @@ def configuration(filepath):
             in case the file could not be read.
         YAMLError
             in case the file is not a valid YAML file.
-        validate.ConfigurationError
+        validate.SemanticError
             in case the file is semantically invalid.
     """
 
@@ -183,7 +215,7 @@ def configuration(filepath):
         raise
     except YAMLError:
         raise
-    except validate.ConfigurationError:
+    except validate.SemanticError:
         raise
 
     return Configuration(definition)

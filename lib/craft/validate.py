@@ -1,7 +1,7 @@
 """ Functions for validating Craft data structures. """
 
-class RepositoryError(Exception):
-    """ Indicates there is an error in a repository's structure. """
+class SemanticError(Exception):
+    """ Raised if there is a semantic error in an object or data structure. """
     pass
 
 def repository(structure):
@@ -11,9 +11,9 @@ def repository(structure):
         structure
             data structure representing a Craft repository.
     Raises
-        RepositoryError
+        SemanticError
             if the structure does not properly represent a Craft repository.
-        PackageError
+        SemanticError
             if one of the repository's packages are not properly defined
             in its structure.
     Returns
@@ -23,36 +23,32 @@ def repository(structure):
     """
 
     if not isinstance(structure, dict):
-        raise RepositoryError
+        raise SemanticError
 
     for name in structure.iterkeys():
         if not isinstance(name, str):
-            raise RepositoryError
+            raise SemanticError
         elif not isinstance(structure[name], dict):
-            raise RepositoryError
+            raise SemanticError
 
         for version in structure[name].iterkeys():
             if not isinstance(version, str) and not isinstance(version, float):
-                raise RepositoryError
+                raise SemanticError
             elif not isinstance(structure[name][version], dict):
-                raise RepositoryError
+                raise SemanticError
 
             for architecture in structure[name][version].iterkeys():
                 if not isinstance(architecture, str):
-                    raise RepositoryError
+                    raise SemanticError
                 elif not isinstance(structure[name][version][architecture], dict):
-                    raise RepositoryError
+                    raise SemanticError
 
                 try:
                     package(structure[name][version][architecture])
-                except PackageError:
+                except SemanticError:
                     raise
 
     return True
-
-class PackageError(Exception):
-    """ Indicates there is an error in a package's structure. """
-    pass
 
 def package(structure):
     """ Validates a Craft package's structure.
@@ -61,7 +57,7 @@ def package(structure):
         structure
             data structure representing a Craft package.
     Raises
-        PackageError
+        SemanticError
             in case the structure does not represent a valid Craft package.
     Returns
         True
@@ -81,7 +77,7 @@ def package(structure):
         tags = structure['information']['tags']
         misc = structure['information']['misc']
     except KeyError:
-        raise PackageError
+        raise SemanticError
 
     must_be_str_list = [
             files_static, depends, conflicts,
@@ -92,10 +88,10 @@ def package(structure):
     for element in must_be_str_list:
         if element is not None:
             if not isinstance(element, list):
-                raise PackageError
+                raise SemanticError
             for subelement in element:
                 if not isinstance(subelement, str):
-                    raise PackageError
+                    raise SemanticError
 
     must_be_str_dict = [
         hashes, misc
@@ -104,18 +100,14 @@ def package(structure):
     for element in must_be_str_dict:
         if element is not None:
             if not isinstance(element, dict):
-                raise PackageError
+                raise SemanticError
             for subelement in element.iterkeys():
                 if not isinstance(subelement, str):
-                    raise PackageError
+                    raise SemanticError
                 elif not isinstance(element[subelement], str):
-                    raise PackageError
+                    raise SemanticError
 
     return True
-
-class ConfigurationError(Exception):
-    """ Indicates there is an error in a configuration structure. """
-    pass
 
 def configuration(structure):
     """ Validates a Craft configuration's structure.
@@ -124,7 +116,7 @@ def configuration(structure):
         structure
             a data structure representing a Craft configuration.
     Raises
-        ConfigurationError
+        SemanticError
             if the structure does not properly represent a Craft configuration.
     Returns
         True
@@ -132,69 +124,69 @@ def configuration(structure):
     """
 
     if not isinstance(structure, dict):
-        raise ConfigurationError
+        raise SemanticError
 
     try:
         repositories = structure['repositories']
         if isinstance(repositories, dict):
             for repository in repositories:
                 if not isinstance(repositories[repository], dict):
-                    raise ConfigurationError
+                    raise SemanticError
                 target = repositories[repository]['target']
                 handler = repositories[repository]['handler']
                 if not isinstance(target, str):
-                    raise ConfigurationError
+                    raise SemanticError
                 elif not isinstance(handler, str):
-                    raise ConfigurationError
+                    raise SemanticError
                 try:
                     env = repositories[repository]['env']
                     if not isinstance(env, dict):
-                        raise ConfigurationError
+                        raise SemanticError
                     for variable in env:
                         if not isinstance(variable, str):
-                            raise ConfigurationError
+                            raise SemanticError
                 except KeyError:
                     pass
         elif repositories is not None:
-            raise ConfigurationError
+            raise SemanticError
     except KeyError:
-        raise ConfigurationError
+        raise SemanticError
 
     try:
         architectures = structure['architectures']
         if not isinstance(architectures, dict):
-            raise ConfigurationError
+            raise SemanticError
         if not isinstance(architectures['default'], str):
-            raise ConfigurationError
+            raise SemanticError
         if not isinstance(architectures['enabled'], list):
-            raise ConfigurationError
+            raise SemanticError
         if not architectures['default'] in architectures['enabled']:
-            raise ConfigurationError
+            raise SemanticError
     except KeyError:
-        raise ConfigurationError
+        raise SemanticError
     for architecture in architectures['enabled']:
         if not isinstance(architecture, str):
-            raise ConfigurationError
+            raise SemanticError
 
     try:
         groups = structure['groups']
     except KeyError:
-        raise ConfigurationError
+        raise SemanticError
     if isinstance(groups, list):
         for group in groups:
             if not isinstance(group, str):
-                raise ConfigurationError
+                raise SemanticError
     elif groups is not None:
-        raise ConfigurationError
+        raise SemanticError
 
     try:
         db = structure['db']
         root = structure['root']
     except KeyError:
-        raise ConfigurationError
+        raise SemanticError
     if db is not None and not isinstance(db, str):
-        raise ConfigurationError
+        raise SemanticError
     elif root is not None and not isinstance(root, str):
-        raise ConfigurationError
+        raise SemanticError
 
     return True
