@@ -10,9 +10,6 @@ def merge(env):
         env
             dictionary containing the variables' names
             and values to be merged to the current environment.
-    Raises
-        TypeError
-            if env is not a dict.
     Returns
         True
             if all variables were successfully merged
@@ -22,8 +19,6 @@ def merge(env):
             to the environment.
     """
 
-    if not isinstance(env, dict):
-        raise TypeError
     try:
         for variable, value in env.items():
             putenv(variable, value)
@@ -38,9 +33,6 @@ def purge(env):
         env
             list containing the variables' names
             to be purged from the current environment.
-    Raises
-        TypeError
-            if env is not a list.
     Returns
         True
             if all variables were successfully purged
@@ -50,8 +42,6 @@ def purge(env):
             from the environment.
     """
 
-    if not isinstance(env, list):
-        raise TypeError
     try:
         for variable in env:
             unsetenv(variable)

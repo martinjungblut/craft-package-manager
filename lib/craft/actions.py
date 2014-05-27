@@ -40,11 +40,6 @@ def install(configuration, unit_names):
     return True
 
 def _install(configuration, package, filepath):
-    if not isinstance(package, Package):
-        raise TypeError
-    elif not isinstance(configuration, Configuration):
-        raise TypeError
-
     n = package.name
     v = package.version
     a = package.architecture

@@ -23,23 +23,8 @@ class Set(object):
             sets
                 list of sets to be automatically added to the set.
                 May be an empty list.
-        Raises
-            TypeError
-                if units is not a list of Unit or an empty list.
-            TypeError
-                if sets is not a list of Set or an empty list.
         """
 
-        if not isinstance(units, list):
-            raise TypeError
-        if not isinstance(sets, list):
-            raise TypeError
-        for unit in units:
-            if not isinstance(unit, Unit):
-                raise TypeError
-        for set in sets:
-            if not isinstance(set, Set):
-                raise TypeError
         self.name = str(name).lower()
         self.units = units
         self.sets = sets
@@ -56,15 +41,10 @@ class Set(object):
         Raises
             NoMatchFound
                 if no units could be found matching the specified substring.
-            TypeError
-                if configuration is not a Configuration object.
         Returns
             list
                 having all units found.
         """
-
-        if not isinstance(configuration, Configuration):
-            raise TypeError
 
         substring = str(substring).lower()
         found = []
@@ -95,8 +75,6 @@ class Set(object):
         Returns
             Unit
         """
-        if not isinstance(configuration, Configuration):
-            raise TypeError
 
         name = str(name).lower()
 
@@ -104,4 +82,5 @@ class Set(object):
             if configuration.is_unit_allowed(unit):
                 if unit.name == name:
                     return unit
+
         raise NoMatchFound

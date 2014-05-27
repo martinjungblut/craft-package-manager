@@ -56,8 +56,6 @@ class Configuration(object):
                 in case the unit may not be installed.
         """
 
-        if not isinstance(unit, Unit):
-            raise TypeError
         if isinstance(unit, Package):
             if not self.has_architecture(unit.architecture):
                 return False
