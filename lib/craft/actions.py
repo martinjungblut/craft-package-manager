@@ -83,8 +83,15 @@ def _install(configuration, package, filepath):
 def unmerge(unit_names):
     pass
 
-def download(units):
+def download(configuration, packages):
     pass
+    #for package in packages:
+        #if len(package.hashes) > 0:
+            #n = package.name
+            #v = package.version
+            #a = package.architecture
+            #try:
+                #mkdir(configuration.db+'/available')
 
 def ClearError(Exception):
     pass

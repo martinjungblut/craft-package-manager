@@ -60,4 +60,3 @@ class Configuration(object):
             if not self.has_architecture(unit.architecture):
                 return False
         return True
-        

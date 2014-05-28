@@ -213,6 +213,6 @@ class Group(Unit):
     def __init__(self, name):
         super(Group, self).__init__(name)
         self.packages = set()
-    
+
     def add(self, package):
         self.packages.add(package)

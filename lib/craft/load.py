@@ -44,14 +44,12 @@ def yaml(filepath):
     finally:
         filehandle.close()
 
-def _set(filepath, name):
-    """ Loads a set from a YAML file.
+def _set(filepath):
+    """ Loads a Set from a YAML file.
 
     Parameters
         filepath
             file to be loaded.
-        name
-            used as the set's name.
     Raises
         IOError
             if the file could not be read.
@@ -77,11 +75,11 @@ def _set(filepath, name):
     except validate.SemanticError:
         raise
 
-    for packagename in definition.iterkeys():
-        for version in definition[packagename].iterkeys():
-            for architecture in definition[packagename][version].iterkeys():
-                data = definition[packagename][version][architecture]
-                package = Package(packagename, version, architecture)
+    for name in definition.iterkeys():
+        for version in definition[name].iterkeys():
+            for architecture in definition[name][version].iterkeys():
+                data = definition[name][version][architecture]
+                package = Package(name, version, architecture)
                 if data['hashes'] is not None:
                     package.hashes = data['hashes']
                 if data['files']['static'] is not None:
@@ -124,7 +122,7 @@ def _set(filepath, name):
     for virtual in virtuals.iterkeys():
         units.append(virtuals[virtual])
 
-    return Set(name, units)
+    return Set(units)
 
 class AvailableError(Exception):
     """ Raised if there is an error in the 'available' set. """
@@ -146,10 +144,10 @@ def available(configuration):
         AvailableError
             in case there are no enabled repositories.
     Returns
-        'available' Set object having all enabled repositories as sub-sets.
+        'available' Set object having all available units.
     """
 
-    repositories = []
+    available = Set()
     directories = glob(configuration.db+'/available/*/')
 
     if len(directories) == 0:
@@ -159,15 +157,18 @@ def available(configuration):
         try:
             name = directory.split('/')
             name = name[len(name)-2]
-            current = _set(directory+'metadata.yml', name)
+            available = available.union(_set(directory+'metadata.yml'))
+        except IOError:
+            raise
+        except YAMLError:
+            raise
         except validate.SemanticError:
             raise
-        repositories.append(current)
 
-    return Set('available', [], repositories)
+    return available
 
 def installed(configuration):
-    """ Loads the 'installed' set.
+    """ Loads the 'installed' Set.
 
     Parameters
         configuration
@@ -186,7 +187,7 @@ def installed(configuration):
     filepath = configuration.db+'/installed/metadata.yml'
 
     try:
-        return _set(filepath, 'installed')
+        return _set(filepath)
     except IOError:
         raise
     except YAMLError:
