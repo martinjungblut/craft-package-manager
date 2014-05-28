@@ -1,6 +1,6 @@
 """ Provides an interface for handling Craft's configuration. """
 
-from units import Unit, Package
+from units import Package
 
 class Configuration(object):
     """ Represents Craft's configuration. """

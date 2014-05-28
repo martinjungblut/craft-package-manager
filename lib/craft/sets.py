@@ -1,9 +1,5 @@
 """ Set module. """
 
-# Craft imports
-from units import Unit, Package
-from configuration import Configuration
-
 class NoMatchFound(Exception):
     """ Indicates no unit was found matching the specified criteria. """
     pass

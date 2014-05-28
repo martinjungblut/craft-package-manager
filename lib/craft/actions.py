@@ -14,8 +14,6 @@ import sets
 import env
 import error
 import archive
-from units import Package
-from configuration import Configuration
 
 class InstallError(Exception):
     pass
