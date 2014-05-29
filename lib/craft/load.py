@@ -2,6 +2,7 @@
 
 # Standard library imports
 from glob import glob
+from re import findall
 
 # Third-party imports
 import yaml as libyaml
@@ -44,77 +45,81 @@ def yaml(filepath):
     finally:
         filehandle.close()
 
-def _set(filepath):
-    """ Loads a Set from a YAML file.
+def _set(paths):
+    """ Loads a Set from one or more YAML files.
 
     Parameters
-        filepath
-            file to be loaded.
+        paths
+            iterable having the file paths to be loaded.
     Raises
         IOError
-            if the file could not be read.
+            if one of the files could not be read.
         YAMLError
-            if the file is not a valid YAML file.
+            if one of the files is not a valid YAML file.
         validate.SemanticError
-            if the file is semantically invalid.
+            if one of the files is semantically invalid.
     Returns
-        Set
+        Set containing all units found in the specified files.
     """
 
     units = []
     groups = {}
     virtuals = {}
 
-    try:
-        definition = yaml(filepath)
-        validate.set(definition)
-    except IOError:
-        raise
-    except YAMLError:
-        raise
-    except validate.SemanticError:
-        raise
+    for path in paths:
+        try:
+            definition = yaml(path)
+            validate.set(definition)
+        except IOError:
+            raise
+        except YAMLError:
+            raise
+        except validate.SemanticError:
+            raise
 
-    for name in definition.iterkeys():
-        for version in definition[name].iterkeys():
-            for architecture in definition[name][version].iterkeys():
-                data = definition[name][version][architecture]
-                package = Package(name, version, architecture)
-                if data['hashes'] is not None:
-                    package.hashes = data['hashes']
-                if data['files']['static'] is not None:
-                    package.files = data['files']
-                if data['depends'] is not None:
-                    for dependency in data['depends']:
-                        package.depend(dependency)
-                if data['conflicts'] is not None:
-                    for conflict in data['conflicts']:
-                        package.conflict(conflict)
-                if data['provides'] is not None:
-                    for virtual in data['provides']:
-                        package.provide(virtual)
-                        try:
-                            virtuals[virtual].provided_by(package)
-                        except KeyError:
-                            virtuals[virtual] = VirtualPackage(virtual)
-                            virtuals[virtual].provided_by(package)
-                if data['groups'] is not None:
-                    for group in data['groups']:
-                        package.add_to_group(group)
-                        try:
-                            groups[group].add(package)
-                        except KeyError:
-                            groups[group] = Group(group)
-                            groups[group].add(package)
-                if data['flags'] is not None:
-                    package.flags = data['flags']
-                if data['information']['maintainers'] is not None:
-                    package.maintainers = data['information']['maintainers']
-                if data['information']['tags'] is not None:
-                    package.tags = data['information']['tags']
-                if data['information']['misc'] is not None:
-                    package.misc = data['information']['misc']
-                units.append(package)
+        repository = findall('([aA-zZ]+|[0-9]+)', path)[-3]
+
+        for name in definition.iterkeys():
+            for version in definition[name].iterkeys():
+                for architecture in definition[name][version].iterkeys():
+                    data = definition[name][version][architecture]
+                    package = Package(name, version, architecture)
+                    if data['hashes'] is not None:
+                        package.hashes = data['hashes']
+                    if data['files']['static'] is not None:
+                        package.files = data['files']
+                    if data['depends'] is not None:
+                        for dependency in data['depends']:
+                            package.depend(dependency)
+                    if data['conflicts'] is not None:
+                        for conflict in data['conflicts']:
+                            package.conflict(conflict)
+                    if data['provides'] is not None:
+                        for virtual in data['provides']:
+                            package.provide(virtual)
+                            try:
+                                virtuals[virtual].provided_by(package)
+                            except KeyError:
+                                virtuals[virtual] = VirtualPackage(virtual)
+                                virtuals[virtual].provided_by(package)
+                    if data['groups'] is not None:
+                        for group in data['groups']:
+                            package.add_to_group(group)
+                            try:
+                                groups[group].add(package)
+                            except KeyError:
+                                groups[group] = Group(group)
+                                groups[group].add(package)
+                    if data['flags'] is not None:
+                        package.flags = data['flags']
+                    if data['information']['maintainers'] is not None:
+                        package.maintainers = data['information']['maintainers']
+                    if data['information']['tags'] is not None:
+                        package.tags = data['information']['tags']
+                    if data['information']['misc'] is not None:
+                        package.misc = data['information']['misc']
+                    package.repository = repository
+                    units.append(package)
 
     for group in groups.iterkeys():
         units.append(groups[group])
@@ -124,55 +129,39 @@ def _set(filepath):
 
     return Set(units)
 
-class AvailableError(Exception):
-    """ Raised if there is an error in the 'available' set. """
-    pass
-
 def available(configuration):
     """ Loads the 'available' set.
 
     Parameters
         configuration
-            Configuration object providing the necessary data.
+            Configuration object providing the database root directory.
     Raises
         IOError
-            in case a set's metadata file could not be read.
+            in case a repository's metadata file could not be read.
         YAMLError
-            in case a set's metadata file is not a valid YAML file.
+            in case a repository's metadata file is not a valid YAML file.
         validate.SemanticError
-            in case a set's metadata file is semantically invalid.
-        AvailableError
-            in case there are no enabled repositories.
+            in case a repository's metadata file is semantically invalid.
     Returns
-        'available' Set object having all available units.
+        'available' Set object having all available units from all
+        repositories.
     """
 
-    available = Set()
-    directories = glob(configuration.db+'/available/*/')
-
-    if len(directories) == 0:
-        raise AvailableError
-
-    for directory in directories:
-        try:
-            name = directory.split('/')
-            name = name[len(name)-2]
-            available = available.union(_set(directory+'metadata.yml'))
-        except IOError:
-            raise
-        except YAMLError:
-            raise
-        except validate.SemanticError:
-            raise
-
-    return available
+    try:
+        return _set(glob(configuration.db+'/available/*/*.yml'))
+    except IOError:
+        raise
+    except YAMLError:
+        raise
+    except validate.SemanticError:
+        raise
 
 def installed(configuration):
     """ Loads the 'installed' Set.
 
     Parameters
         configuration
-            Configuration object providing the necessary data.
+            Configuration object providing the database root directory.
     Raises
         IOError
             in case /installed/metadata.yml could not be found.
@@ -184,10 +173,8 @@ def installed(configuration):
         'installed' Set object having all installed units.
     """
 
-    filepath = configuration.db+'/installed/metadata.yml'
-
     try:
-        return _set(filepath)
+        return _set([configuration.db+'/installed/metadata.yml'])
     except IOError:
         raise
     except YAMLError:

@@ -151,7 +151,8 @@ def sync(configuration):
             print(repository['env'])
             if not env.merge(repository['env']):
                 error.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
-        system(handler+' '+target)
+        if system(handler+' '+target) != 0:
+            error.fatal("call to '{0}' failed! Expected status code 0.".format(handler), 1)
         if 'env' in repository:
             if not env.purge(repository['env'].keys()):
                 error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))

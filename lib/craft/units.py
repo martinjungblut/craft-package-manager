@@ -71,6 +71,7 @@ class Package(Unit):
         self.misc = {}
         self.hashes = {}
         self.files = {}
+        self.repository = None
 
     def depend(self, dependency):
         """ Specifies this package depends on one or more other packages. """

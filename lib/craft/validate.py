@@ -9,16 +9,16 @@ def set(structure):
 
     Parameters
         structure
-            data structure representing a Craft set.
+            data structure representing a Craft Set.
     Raises
         SemanticError
-            if the structure does not properly represent a Craft set.
+            if the structure does not properly represent a Craft Set.
         SemanticError
-            if one of the set's packages are not properly defined
+            if one of the Set's packages are not properly defined
             in its structure.
     Returns
         True
-            if the structure properly represents a valid Craft set's
+            if the structure properly represents a valid Craft Set's
             definition.
     """
 
