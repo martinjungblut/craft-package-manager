@@ -9,6 +9,7 @@ import yaml as libyaml
 
 # Craft imports
 import validate
+import error
 from configuration import Configuration
 from sets import Set
 from units import Package, VirtualPackage, Group
@@ -65,6 +66,7 @@ def _set(paths):
     units = []
     groups = {}
     virtuals = {}
+    registry = []
 
     for path in paths:
         try:
@@ -77,11 +79,17 @@ def _set(paths):
         except validate.SemanticError:
             raise
 
-        repository = findall('([aA-zZ]+|[0-9]+)', path)[-3]
+        repository = findall('([a-zA-Z0-9]+)', path)[-3]
 
         for name in definition.iterkeys():
             for version in definition[name].iterkeys():
                 for architecture in definition[name][version].iterkeys():
+                    try:
+                        if registry.index(name+str(version)+architecture) >= 0:
+                            error.warning("duplicate package found: {0} {1} ({2}) from repository '{3}'. Ignoring...".format(name, str(version), architecture, repository))
+                            break
+                    except ValueError:
+                        registry.append(name+str(version)+architecture)
                     data = definition[name][version][architecture]
                     package = Package(name, version, architecture)
                     if data['hashes'] is not None:
@@ -209,4 +217,11 @@ def configuration(filepath):
     except validate.SemanticError:
         raise
 
-    return Configuration(definition)
+    repositories = definition['repositories']
+    default_architecture = definition['architectures']['default']
+    architectures = definition['architectures']['enabled']
+    groups = definition['groups']
+    db = definition['db']
+    root = definition['root']
+
+    return Configuration(repositories, architectures, default_architecture, groups, db, root)

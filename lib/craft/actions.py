@@ -145,14 +145,15 @@ def sync(configuration):
             chdir(configuration.db+'/available/'+name)
         except OSError:
             raise SyncError
-        target = repository['target']+'/metadata.yml'
-        handler = repository['handler']
         if 'env' in repository:
             print(repository['env'])
             if not env.merge(repository['env']):
                 error.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
-        if system(handler+' '+target) != 0:
-            error.fatal("call to '{0}' failed! Expected status code 0.".format(handler), 1)
+        handler = repository['handler']
+        for arch in configuration.architectures:
+            target = repository['target']+'/'+arch+'.yml'
+            if system(handler+' '+target) != 0:
+                error.warning("could not synchronise architecture '{0}' from repository '{1}'!".format(arch, name))
         if 'env' in repository:
             if not env.purge(repository['env'].keys()):
                 error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
