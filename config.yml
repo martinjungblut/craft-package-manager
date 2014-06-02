@@ -9,10 +9,9 @@ repositories:
       #http_proxy: "http://ucs-gw.ucs.br:3128"
 
 architectures:
-  default: amd64
+  default: any
   enabled:
-    - amd64
-    - sparc
+    - any
 
 groups:
   - base

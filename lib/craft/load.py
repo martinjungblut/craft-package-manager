@@ -182,7 +182,7 @@ def installed(configuration):
     """
 
     try:
-        return _set([configuration.db+'/installed/metadata.yml'])
+        return _set(glob(configuration.db+'/installed/metadata.yml'))
     except IOError:
         raise
     except YAMLError:
