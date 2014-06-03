@@ -87,57 +87,68 @@ class DownloadError(Exception):
 
 def download(configuration, packages):
 
+    grouped_packages = {}
+
     for package in packages:
+        try:
+            grouped_packages[package.repository].append(package)
+        except KeyError:
+            grouped_packages[package.repository] = []
+            grouped_packages[package.repository].append(package)
 
-        if len(package.hashes) > 0:
-            n = package.name
-            v = package.version
-            a = package.architecture
+    for repository_name in grouped_packages.iterkeys():
 
-            directories = [
-                configuration.db+'/available',
-                configuration.db+'/available/'+package.repository,
-                configuration.db+'/available/'+package.repository+'/cache',
-                configuration.db+'/available/'+package.repository+'/cache/'+n,
-                configuration.db+'/available/'+package.repository+'/cache/'+n+'/'+v,
-                configuration.db+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a
-            ]
+        try:
+            repository = configuration.repositories[repository_name]
+        except KeyError:
+            raise DownloadError
 
-            for directory in directories:
+        try:
+            env.merge(repository['env'])
+        except env.EnvError:
+            error.warning("could not merge the environment variables associated to the repository '{0}'!".format(repository_name))
+        except KeyError:
+            pass
+
+        for package in grouped_packages[repository_name]:
+
+            if len(package.hashes) > 0:
+                n = package.name
+                v = package.version
+                a = package.architecture
+
+                directories = [
+                    configuration.db+'/available',
+                    configuration.db+'/available/'+repository_name,
+                    configuration.db+'/available/'+repository_name+'/cache',
+                    configuration.db+'/available/'+repository_name+'/cache/'+n,
+                    configuration.db+'/available/'+repository_name+'/cache/'+n+'/'+v,
+                    configuration.db+'/available/'+repository_name+'/cache/'+n+'/'+v+'/'+a
+                ]
+
+                for directory in directories:
+                    try:
+                        mkdir(directory)
+                    except OSError:
+                        pass
+
                 try:
-                    mkdir(directory)
+                    chdir(configuration.db+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
                 except OSError:
-                    pass
-
-            try:
-                chdir(configuration.db+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
-            except OSError:
-                raise DownloadError
-
-            if not isfile('package.tar.gz'):
-                try:
-                    repository = configuration.repositories[package.repository]
-                except KeyError:
                     raise DownloadError
 
-                try:
-                    env.merge(repository['env'])
-                except env.EnvError:
-                    error.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
-                except KeyError:
-                    pass
+                if not isfile('package.tar.gz'):
+                    handler = repository['handler']
+                    target = "{0}/{1}/{2}/{3}/package.tar.gz".format(repository['target'], n, v, a)
+                    if system(handler+' '+target) != 0:
+                        raise DownloadError
 
-                handler = repository['handler']
-                target = "{0}/{1}/{2}/{3}/package.tar.gz".format(repository['target'], n, v, a)
-                if system(handler+' '+target) != 0:
-                    raise DownloadError
-
-                try:
-                    env.purge(repository['env'].keys())
-                except env.EnvError:
-                    error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
-                except KeyError:
-                    pass
+        try:
+            env.purge(repository['env'].keys())
+        except env.EnvError:
+            error.warning("could not purge the environment variables associated to the repository '{0}'!".format(package.repository))
+        except KeyError:
+            pass
 
 def ClearError(Exception):
     pass
