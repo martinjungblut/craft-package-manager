@@ -86,6 +86,18 @@ class DownloadError(Exception):
     pass
 
 def download(configuration, packages):
+    """ Download packages.
+
+    Parameters
+        configuration
+            a Configuration object having the required data for downloading
+            the packages.
+        packages
+            an iterable having the appropriate Package objects to be downloaded.
+    Raises
+        DownloadError
+            in case of failure.
+    """
 
     grouped_packages = {}
 
@@ -184,9 +196,6 @@ def sync(configuration):
             if the internal clear() call fails and the previously set
             local repository cache is not properly cleared up prior to the
             actual synchronisation.
-    Returns
-        True
-            if all repositories were successfully synchronised.
     """
 
     try:
@@ -224,5 +233,3 @@ def sync(configuration):
             error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
         except KeyError:
             pass
-
-    return True
