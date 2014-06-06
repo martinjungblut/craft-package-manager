@@ -3,6 +3,7 @@
 # Standard library imports
 from glob import glob
 from re import findall
+from os import access, W_OK, X_OK
 
 # Third-party imports
 import yaml as libyaml
@@ -223,5 +224,9 @@ def configuration(filepath):
     groups = definition['groups']
     db = definition['db']
     root = definition['root']
+
+    for each in [db, root]:
+        if not access(each, W_OK | X_OK):
+            raise SemanticError
 
     return Configuration(repositories, architectures, default_architecture, groups, db, root)
