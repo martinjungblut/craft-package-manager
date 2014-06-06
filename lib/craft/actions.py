@@ -47,7 +47,7 @@ def _install(configuration, package, filepath):
             Craft Configuration object.
             determines what settings will be used for the installation.
         package
-            the Package object to be installed.
+            the package to be installed.
         filepath
             the package's archive's absolute path.
     Raises
@@ -77,9 +77,13 @@ def _install(configuration, package, filepath):
         except OSError:
             pass
 
-    try:
-        mkdir(db+'/installed/'+name+'/'+version+'/'+architecture)
-    except OSError:
+    if not is_installed(configuration, package):
+        try:
+            mkdir(db+'/installed/'+name+'/'+version+'/'+architecture)
+        except OSError:
+            error.warning("Failed to create internal directory while installing '{0}'.".format(package))
+            raise InstallError
+    else:
         error.warning("'{0}' seems to be already installed.".format(package))
         raise InstallError
 
@@ -128,6 +132,33 @@ def _install(configuration, package, filepath):
 
     return True
 
+def is_installed(configuration, package):
+    """ Checks whether a package is already installed.
+
+    Parameters
+        configuration
+            Craft Configuration object.
+            determines what settings will be used for the checking whether
+            the package is installed or not.
+        package
+            the package to be checked.
+    Returns
+        True
+            if the package is installed.
+        False
+            if the package is not installed.
+    """
+
+    db = configuration.db
+    architecture = package.architecture
+    name = package.name
+    version = package.version
+
+    if len(glob(db+'/installed/'+name+'/'+version+'/'+architecture+'/metadata.yml')) > 0:
+        return True
+    else:
+        return False
+
 def unmerge(unit_names):
     pass
 
@@ -142,8 +173,7 @@ def download(configuration, packages):
             Craft Configuration object.
             determines what settings will be used for the download.
         packages
-            an iterable having the appropriate Package objects
-            to be downloaded.
+            an iterable having the packages to be downloaded.
     Raises
         DownloadError
             in case of failure.
