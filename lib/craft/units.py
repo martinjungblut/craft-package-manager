@@ -204,6 +204,12 @@ class Package(Unit):
     def __unicode__(self):
         return self.__str__()
 
+    def __eq__(self, other):
+        if str(self) == str(other):
+            return True
+        else:
+            return False
+
 class VirtualPackage(Unit):
     """ Represents a virtual package. """
 

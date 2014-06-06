@@ -36,7 +36,7 @@ def getfiles(filepath):
     except ValueError:
         pass
 
-    return files
+    return reversed(files)
 
 def extract(filepath, destination):
     """ Extract a package file to a specified destination.
