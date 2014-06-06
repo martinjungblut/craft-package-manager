@@ -4,7 +4,7 @@ class NoMatchFound(Exception):
     """ Indicates no unit was found matching the specified criteria. """
     pass
 
-class Set(set):
+class Set(list):
     """ Represents a set of units. """
 
     def __init__(self, units = []):
@@ -17,7 +17,7 @@ class Set(set):
         """
 
         for unit in units:
-            self.add(unit)
+            self.append(unit)
 
     def search(self, substring):
         """ Retrieves a list of units based on a substring match of each

@@ -209,17 +209,17 @@ class VirtualPackage(Unit):
 
     def __init__(self, name):
         super(VirtualPackage, self).__init__(name)
-        self.provided = set()
+        self.provided = list()
 
     def provided_by(self, package):
-        self.provided.add(package)
+        self.provided.append(package)
 
 class Group(Unit):
     """ Represents a group of packages. """
 
     def __init__(self, name):
         super(Group, self).__init__(name)
-        self.packages = set()
+        self.packages = list()
 
     def add(self, package):
-        self.packages.add(package)
+        self.packages.append(package)
