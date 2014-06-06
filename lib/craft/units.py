@@ -198,6 +198,12 @@ class Package(Unit):
         except ValueError:
             return False
 
+    def __str__(self):
+        return "{0}:{1} {2}".format(self.name, self.architecture, self.version)
+
+    def __unicode__(self):
+        return self.__str__()
+
 class VirtualPackage(Unit):
     """ Represents a virtual package. """
 

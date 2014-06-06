@@ -9,10 +9,10 @@ def getfiles(filepath):
 
     Parameters
         filepath
-            Package file for the files list to be retrieved from.
+            package archive for the files list to be retrieved from.
     Returns
         list
-            having the package archive's files' names.
+            having the package's archive's files' names.
         False
             if an IOError occurred during any of the operations.
     """
@@ -24,11 +24,11 @@ def getfiles(filepath):
 
     try:
         handle = archive_open(filepath)
-        files = handle.getnames()
     except IOError:
         return False
-    finally:
-        handle.close()
+
+    files = handle.getnames()
+    handle.close()
 
     try:
         for controlfile in controlfiles:

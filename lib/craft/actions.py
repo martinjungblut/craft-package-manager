@@ -15,6 +15,7 @@ import env
 import error
 import load
 import sets
+import checksum
 
 class InstallError(Exception):
     pass
@@ -39,42 +40,90 @@ def install(configuration, unit_names):
     return True
 
 def _install(configuration, package, filepath):
-    n = package.name
-    v = package.version
-    a = package.architecture
+    """ Performs a low-level package installation.
+
+    Parameters
+        configuration
+            Craft Configuration object.
+            determines what settings will be used for the installation.
+        package
+            the Package object to be installed.
+        filepath
+            the package's archive's absolute path.
+    Raises
+        InstallError
+            if any error occurs during the installation.
+        OSError
+            if, in case an operation has failed, it is not possible
+            to cleanly recover from it.
+    Returns
+        True
+            if the installation was successfully completed.
+    """
+
+    db = configuration.db
+    architecture = package.architecture
+    name = package.name
+    version = package.version
+
+    required = [
+        db+'/installed/',
+        db+'/installed/'+name,
+        db+'/installed/'+name+'/'+version
+    ]
+    for each in required:
+        try:
+            mkdir(each)
+        except OSError:
+            pass
 
     try:
-        mkdir(configuration.db+'/installed/')
+        mkdir(db+'/installed/'+name+'/'+version+'/'+architecture)
     except OSError:
-        pass
+        error.warning("'{0}' seems to be already installed.".format(package))
+        raise InstallError
+
     try:
-        mkdir(configuration.db+'/installed/'+n)
-    except OSError:
-        pass
-    try:
-        mkdir(configuration.db+'/installed/'+n+'/'+v)
-    except OSError:
-        pass
-    try:
-        mkdir(configuration.db+'/installed/'+n+'/'+v+'/'+a)
-        chdir(configuration.db+'/installed/'+n+'/'+v+'/'+a)
+        chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
     except OSError:
         raise InstallError
+
+    for hash in package.hashes.iterkeys():
+        if hash == 'sha1':
+            if not checksum.sha1(filepath, package.hashes[hash]):
+                error.warning("Inconsistent archive for package '{0}'.".format(package))
+                try:
+                    rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
+                except OSError:
+                    raise
+                raise InstallError
+        else:
+            error.warning("'{0}' has an unsupported archive checksum type: {1}. Ignoring...".format(package, hash))
 
     files = archive.getfiles(filepath)
     if not files:
+        try:
+            rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
+        except OSError:
+            raise
         raise InstallError
+
     try:
         files_dump = open('files.yml', 'w')
-        dump(files, files_dump, default_flow_style = False)
         metadata_dump = open('metadata.yml', 'w')
+        dump(files, files_dump, default_flow_style = False)
         dump(package, metadata_dump, default_flow_style = False)
     except IOError:
         raise InstallError
     finally:
         files_dump.close()
         metadata_dump.close()
+
     if not archive.extract(filepath, configuration.root):
+        try:
+            rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
+        except OSError:
+            raise
         raise InstallError
 
     return True
@@ -90,13 +139,17 @@ def download(configuration, packages):
 
     Parameters
         configuration
-            a Configuration object having the required data for downloading
-            the packages.
+            Craft Configuration object.
+            determines what settings will be used for the download.
         packages
-            an iterable having the appropriate Package objects to be downloaded.
+            an iterable having the appropriate Package objects
+            to be downloaded.
     Raises
         DownloadError
             in case of failure.
+    Returns
+        True
+            in case all specified packages have been successfully downloaded.
     """
 
     grouped_packages = {}
@@ -162,6 +215,8 @@ def download(configuration, packages):
         except KeyError:
             pass
 
+    return True
+
 def ClearError(Exception):
     pass
 
@@ -171,6 +226,9 @@ def clear(configuration):
     Raises
         ClearError
             in case of failure.
+    Returns
+        True
+            in case the local cache has been successfully cleared.
     """
 
     for directory in glob(configuration.db+'/available/*'):
@@ -178,6 +236,8 @@ def clear(configuration):
             rmtree(directory)
         except OSError:
             raise ClearError
+
+    return True
 
 class SyncError(Exception):
     pass
@@ -196,12 +256,16 @@ def sync(configuration):
             if the internal clear() call fails and the previously set
             local repository cache is not properly cleared up prior to the
             actual synchronisation.
+    Returns
+        True
+            in case the synchonisation has been successfully executed.
     """
 
     try:
         clear(configuration)
     except ClearError:
         raise
+
     for name in configuration.repositories.iterkeys():
         repository = configuration.repositories[name]
         try:
@@ -233,3 +297,5 @@ def sync(configuration):
             error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
         except KeyError:
             pass
+
+    return True
