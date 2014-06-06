@@ -106,8 +106,9 @@ class Craft(object):
 
         try:
             files_dump = open('files.yml', 'w')
+            for each in files:
+                files_dump.write(each+'\n')
             metadata_dump = open('metadata.yml', 'w')
-            dump(files, files_dump, default_flow_style = False)
             dump(package, metadata_dump, default_flow_style = False)
         except IOError:
             raise InstallError
@@ -273,5 +274,7 @@ class Craft(object):
                 error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
             except KeyError:
                 pass
+
+        self.available = load.available(self.configuration)
 
         return True
