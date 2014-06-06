@@ -3,13 +3,15 @@
 # Standard library imports
 import hashlib
 
-
-def sha1(filepath):
-    """ Calculates the SHA-1 checksum of a file.
+def sha1(filepath, expected):
+    """ Calculates and verifies the SHA-1 checksum of a file's
+    contents.
 
     Parameters
         filepath
             file to be read.
+        expected
+            the expected SHA-1 checksum.
     Raises
         IOError
             if the file could not be read.
@@ -33,4 +35,7 @@ def sha1(filepath):
 
     handle.close()
 
-    return hasher.hexdigest()
+    if expected == hasher.hexdigest():
+        return True
+    else:
+        return False
