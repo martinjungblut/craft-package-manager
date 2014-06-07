@@ -95,8 +95,7 @@ def _set(paths):
                     package = Package(name, version, architecture)
                     if data['hashes'] is not None:
                         package.hashes = data['hashes']
-                    if data['files']['static'] is not None:
-                        package.files = data['files']
+                    package.files = data['files']
                     if data['depends'] is not None:
                         for dependency in data['depends']:
                             package.depend(dependency)
@@ -183,7 +182,7 @@ def installed(configuration):
     """
 
     try:
-        return _set(glob(configuration.db+'/installed/metadata.yml'))
+        return _set(glob(configuration.db+'/installed/*/*/*/metadata.yml'))
     except IOError:
         raise
     except YAMLError:

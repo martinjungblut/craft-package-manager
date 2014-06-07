@@ -78,6 +78,8 @@ def package(structure):
         misc = structure['information']['misc']
     except KeyError:
         raise SemanticError
+    except TypeError:
+        raise SemanticError
 
     must_be_str_list = [
             files_static, depends, conflicts,

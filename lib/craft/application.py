@@ -7,11 +7,12 @@ from os.path import isfile
 from shutil import rmtree
 
 # Third-party imports
-from yaml import dump
+import yaml
 
 # Craft imports
 import archive
 import checksum
+import dump
 import env
 import error
 import load
@@ -82,6 +83,7 @@ class Craft(object):
         try:
             chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
         except OSError:
+            error.warning("Could not access the directory belonging to package '{0}'.".format(package))
             raise InstallError
 
         for hash in package.hashes.iterkeys():
@@ -108,13 +110,17 @@ class Craft(object):
             files_dump = open('files.yml', 'w')
             for each in files:
                 files_dump.write(each+'\n')
-            metadata_dump = open('metadata.yml', 'w')
-            dump(package, metadata_dump, default_flow_style = False)
         except IOError:
             raise InstallError
         finally:
             files_dump.close()
-            metadata_dump.close()
+
+        try:
+            if not dump.package(package, 'metadata.yml'):
+                error.warning("Failed to write metadata.yml for package '{0}'.".format(package))
+                raise InstallError
+        except IOError:
+            raise
 
         if not archive.extract(filepath, self.configuration.root):
             try:
@@ -122,6 +128,8 @@ class Craft(object):
             except OSError:
                 raise
             raise InstallError
+
+        self.installed.append(package)
 
         return True
 
@@ -220,6 +228,8 @@ class Craft(object):
                 rmtree(directory)
             except OSError:
                 raise ClearError
+
+        self.available = load.available(self.configuration)
 
         return True
 
