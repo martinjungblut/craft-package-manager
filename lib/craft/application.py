@@ -2,8 +2,8 @@
 
 # Standard library imports
 from glob import glob
-from os import system, mkdir, chdir
-from os.path import isfile
+from os import system, mkdir, chdir, rmdir, remove, access, W_OK
+from os.path import isfile, isdir
 from shutil import rmtree
 
 # Third-party imports
@@ -18,6 +18,9 @@ import error
 import load
 
 class InstallError(Exception):
+    pass
+
+class UninstallError(Exception):
     pass
 
 class DownloadError(Exception):
@@ -107,7 +110,7 @@ class Craft(object):
             raise InstallError
 
         try:
-            files_dump = open('files.yml', 'w')
+            files_dump = open('files', 'w')
             for each in files:
                 files_dump.write(each+'\n')
         except IOError:
@@ -209,6 +212,76 @@ class Craft(object):
                 error.warning("could not purge the environment variables associated to the repository '{0}'!".format(package.repository))
             except KeyError:
                 pass
+
+        return True
+
+    def _uninstall(self, package):
+        """ Performs a low-level package uninstallation.
+
+        Parameters
+            package
+                the package to be uninstalled.
+        Raises
+            UninstallError
+                if any error occurs during the uninstallation.
+        Returns
+            True
+                if the uninstallation was successfully completed.
+        """
+
+        if package not in self.installed:
+            error.warning("Package '{0}' is not installed.")
+            raise UninstallError
+
+        db = self.configuration.db
+        root = self.configuration.root
+        architecture = package.architecture
+        name = package.name
+        version = package.version
+
+        try:
+            chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
+        except OSError:
+            error.warning("Could not access the directory belonging to package '{0}'.".format(package))
+            raise UninstallError
+
+        try:
+            handle = open('files')
+        except IOError:
+            error.warning("Could not read the files list belonging to package '{0}'.".format(package))
+            raise UninstallError
+
+        files = handle.read().splitlines()
+        handle.close()
+
+        for each in files:
+            if not access(root+each, W_OK):
+                error.warning("Can not remove file '{0}' from package '{1}'.".format(root+each, package))
+                raise UninstallError
+
+        paths = [
+            db+'/installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
+            db+'/installed/'+name+'/'+version+'/'+architecture+'/files',
+            db+'/installed/'+name+'/'+version+'/'+architecture
+        ]
+
+        for each in paths:
+            if not access(each, W_OK):
+                error.warning("Can not remove file '{0}'.".format(each))
+                raise UninstallError
+
+        for each in files:
+            if isdir(root+each):
+                rmdir(root+each)
+            else:
+                remove(root+each)
+        for each in paths:
+            if isdir(each):
+                rmdir(each)
+            else:
+                remove(each)
+
+        self.installed.remove(package)
 
         return True
 

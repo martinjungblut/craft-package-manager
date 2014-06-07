@@ -41,11 +41,13 @@ def yaml(filepath):
         raise
 
     try:
-        return libyaml.load(filehandle)
+        structure = libyaml.load(filehandle)
     except libyaml.YAMLError:
         raise YAMLError
     finally:
         filehandle.close()
+
+    return structure
 
 def _set(paths):
     """ Loads a Set from one or more YAML files.
@@ -223,6 +225,11 @@ def configuration(filepath):
     groups = definition['groups']
     db = definition['db']
     root = definition['root']
+
+    if not db.endswith('/'):
+        db = db+'/'
+    if not root.endswith('/'):
+        root = root+'/'
 
     for each in [db, root]:
         if not access(each, W_OK | X_OK):
