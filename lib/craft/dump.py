@@ -3,11 +3,11 @@
 # Third-party imports
 import yaml
 
-def package(pkg, filepath):
-    """ Dumps a pkg unit to an YAML file.
+def package(package, filepath):
+    """ Dumps a package unit to an YAML file.
 
     Parameters
-        pkg
+        package
             Package object to be dumped.
         filepath
             path of the file for the object to be dumped in.
@@ -19,42 +19,41 @@ def package(pkg, filepath):
             if the package was successfully dumped.
     """
 
-    container = {}
-    container[pkg.name] = {}
-    container[pkg.name][pkg.version] = {}
+    outer = {}
+    outer[package.name] = {}
+    outer[package.name][package.version] = {}
+    inner = {}
+    inner['hashes'] = package.hashes
+    inner['depends'] = package.dependencies
+    inner['conflicts'] = package.conflicts
+    inner['replaces'] = package.replaces
+    inner['provides'] = package.provides
+    inner['groups'] = package.groups
+    inner['flags'] = package.flags
 
-    unit = {}
-    unit['hashes'] = pkg.hashes
-    unit['depends'] = pkg.dependencies
-    unit['conflicts'] = pkg.conflicts
-    unit['replaces'] = pkg.replaces
-    unit['provides'] = pkg.provides
-    unit['groups'] = pkg.groups
-    unit['flags'] = pkg.flags
+    for each in inner.iterkeys():
+        if len(inner[each]) == 0:
+            inner[each] = None
 
-    for each in unit.iterkeys():
-        if len(unit[each]) == 0:
-            unit[each] = None
+    inner['information'] = {}
+    inner['information']['maintainers'] = package.maintainers
+    inner['information']['tags'] = package.tags
+    inner['information']['misc'] = package.misc
 
-    unit['information'] = {}
-    unit['information']['maintainers'] = pkg.maintainers
-    unit['information']['tags'] = pkg.tags
-    unit['information']['misc'] = pkg.misc
+    for each in inner['information'].iterkeys():
+        if len(inner['information'][each]) == 0:
+            inner['information'][each] = None
 
-    for each in unit['information'].iterkeys():
-        if len(unit['information'][each]) == 0:
-            unit['information'][each] = None
+    inner['files'] = {}
+    inner['files']['static'] = package.files['static']
 
-    unit['files'] = {}
-    unit['files']['static'] = pkg.files['static']
-
-    container[pkg.name][pkg.version][pkg.architecture] = unit
+    outer[package.name][package.version][package.architecture] = inner
 
     try:
         handle = open(filepath, 'w')
+        yaml.dump(outer, handle, default_flow_style=False)
     except IOError:
         raise
-
-    yaml.dump(container, handle, default_flow_style=False)
     handle.close()
+
     return True

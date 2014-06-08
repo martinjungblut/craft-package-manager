@@ -2,18 +2,18 @@
 
 # Standard library imports
 from glob import glob
-from re import findall
 from os import access, W_OK, X_OK
+from re import findall
 
 # Third-party imports
 import yaml as libyaml
 
 # Craft imports
-import validate
-import error
 from configuration import Configuration
 from sets import Set
 from units import Package, VirtualPackage, Group
+import error
+import validate
 
 class YAMLError(Exception):
     """ Abstracts libyaml.YAMLError in a native Craft exception. """
