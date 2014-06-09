@@ -86,13 +86,14 @@ def _set(paths):
 
         for name in definition.iterkeys():
             for version in definition[name].iterkeys():
+                version = str(version)
                 for architecture in definition[name][version].iterkeys():
                     try:
-                        if registry.index(name+str(version)+architecture) >= 0:
-                            error.warning("duplicate package found: {0} {1} ({2}) from repository '{3}'. Ignoring...".format(name, str(version), architecture, repository))
+                        if registry.index(name+version+architecture) >= 0:
+                            error.warning("duplicate package found: {0} {1} ({2}) from repository '{3}'. Ignoring...".format(name, version, architecture, repository))
                             break
                     except ValueError:
-                        registry.append(name+str(version)+architecture)
+                        registry.append(name+version+architecture)
                     data = definition[name][version][architecture]
                     package = Package(name, version, architecture)
                     if data['hashes'] is not None:
@@ -236,3 +237,109 @@ def configuration(filepath):
             raise SemanticError
 
     return Configuration(repositories, architectures, default_architecture, groups, db, root)
+
+class Registry(dict):
+    """ This registry works as an internal namespace. It allows Craft to check
+    whether a specific package, virtual package or group has already
+    found. """
+
+    def has_unit(self, name):
+        """ Checks whether a specific unit is declared in the registry.
+
+        Parameters
+            name
+                the unit's name;
+        Returns
+            True
+                if the unit is declared in the registry.
+            False
+                if the unit is not declared in the registry.
+        """
+
+        if self.has_key(name):
+            return True
+        else:
+            return False
+
+    def add_unit(self, name):
+        """ Adds a unit to the registry.
+
+        Parameters
+            name
+                the unit's name.
+        Returns
+            True
+                if the unit was successfully added to the registry
+            False
+                if the unit was already present in the registry,
+                and therefore could not be added.
+        """
+
+        if self.has_key(name):
+            return False
+        else:
+            self[name] = True
+            return True
+
+    def has_package(self, name, version, architecture):
+        """ Checks whether a specific package is declared in the registry.
+
+        Parameters
+            name
+                the package's name.
+            version
+                the package's version.
+            architecture
+                the package's architecture.
+        Returns
+            True
+                if the package is declared in the registry.
+            False
+                if the package is not declared in the registry.
+        """
+
+        try:
+            if self[name][version].has_key(architecture):
+                return True
+            else:
+                return False
+        except KeyError:
+            return False
+        except TypeError:
+            return False
+
+    def add_package(self, name, version, architecture):
+        """ Adds a package to the registry.
+
+        Parameters
+            name
+                the package's name.
+            version
+                the package's version.
+            architecture
+                the package's architecture.
+        Returns
+            True
+                if the package was successfully added to the registry
+            False
+                if the package was already present in the registry,
+                and therefore could not be added.
+        """
+
+        if self.has_key(name):
+            if self[name] is True:
+                return False
+            elif not self[name].has_key(version):
+                self[name][version] = {}
+                self[name][version][architecture] = True
+                return True
+            elif not self[name][version].has_key(architecture):
+                self[name][version][architecture] = True
+                return True
+            else:
+                return False
+        else:
+            self[name] = {}
+            self[name][version] = {}
+            self[name][version][architecture] = True
+            return True
