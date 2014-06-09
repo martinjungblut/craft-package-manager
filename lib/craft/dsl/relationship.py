@@ -40,3 +40,30 @@ def parse(other):
         return matches
     else:
         return False
+
+def multiarch(target):
+    """ Checks whether a unit relationship is a multi-architecture one.
+
+    Parameters
+        target
+            string to be checked.
+    Returns
+        string
+            the architecture's name.
+        False
+            in case target is invalid, or if the relationship is not
+            a multi-architecture one.
+    Example
+        >>> multiarch('python(amd64)')
+        'amd64'
+        >>> multiarch('python')
+        False
+        >>> multiarch('')
+        False
+    """
+
+    matches = re.findall('\w+\((\w+)\)', target.lower())
+    if matches:
+        return matches[0]
+    else:
+        return False
