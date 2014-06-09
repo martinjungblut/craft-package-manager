@@ -60,7 +60,7 @@ class Package(Unit):
         super(Package, self).__init__(name)
         self.version = str(version)
         self.architecture = str(architecture)
-        self.dependencies = []
+        self.depends = []
         self.conflicts = []
         self.replaces = []
         self.provides = []
@@ -76,8 +76,8 @@ class Package(Unit):
     def depend(self, dependency):
         """ Specifies this package depends on one or more other packages. """
         dependency = str(dependency).lower()
-        if self.dependencies.count(dependency) == 0:
-            self.dependencies.append(dependency)
+        if self.depends.count(dependency) == 0:
+            self.depends.append(dependency)
 
     def does_depend(self, dependency=False):
         """ If dependency is specified, checks whether this package
@@ -87,12 +87,12 @@ class Package(Unit):
                 list of dependencies. """
         if dependency:
             try:
-                self.dependencies.index(dependency)
+                self.depends.index(dependency)
                 return True
             except ValueError:
                 return False
         else:
-            return self.dependencies
+            return self.depends
 
     def conflict(self, conflict):
         """ Specifies this package conflicts with one or more
