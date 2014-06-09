@@ -241,7 +241,7 @@ def configuration(filepath):
 class Registry(dict):
     """ This registry works as an internal namespace. It allows Craft to check
     whether a specific package, virtual package or group has already
-    found. """
+    been found. """
 
     def has_unit(self, name):
         """ Checks whether a specific unit is declared in the registry.
