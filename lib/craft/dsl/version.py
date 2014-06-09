@@ -1,17 +1,29 @@
-""" Interface for handling software version strings. """
+""" Handle the software versioning DSL. """
 
 # Standard library imports
 from re import findall
 
 def parse(version):
-    """ Parses a specific software version string, and return it as a list.
-    Algorithm:
-    1 Case insensitive regular expression matches letters and numbers.
-    2 For each one of the matching groups:
-        * Convert it to an integer if possible.
-        * Otherwise, convert it to lowercase.
-    3 Glue sequential matching groups together.
+    """ Parses a specific software versioning string,
+    and returns it as a list.
+
+    Parameters
+        version
+            software versioning string to be parsed.
+    Returns
+        list
+            having all valid fragments of a software version.
+        False
+            if there are no valid fragments of a software version in
+            the provided version.
+    Algorithm
+        1 Case insensitive regular expression matches letters and numbers.
+        2 For each one of the matching groups:
+            * Convert it to an integer if possible.
+            * Otherwise, convert it to lowercase.
+        3 Glue sequential matching groups together.
     """
+
     matches = findall('([aA-zZ]+|[0-9]+)', str(version))
     if matches:
         for match in matches:
@@ -35,21 +47,39 @@ def parse(version):
     else:
         return False
 
-def compare(f_version, s_version):
-    """ Compares two software version strings. Works the same as C's strcmp.
-    Algorithm:
-    1 Parse both versions.
-        * If parsing fails or any of the versions is empty, return accordingly.
-    2 When the versions' length differs:
-        * Treat a string remainder as lesser than no remainer.
-        * Treat an integer remainer as greater than no remainder.
-    3 Return 1 if f_version is greater than s_version.
-    4 Return -1 if f_version is lesser than s_version.
-    5 Return 0 if f_version is equal to s_version.
+def compare(first, second):
+    """ Compares two software version strings.
+    Works the same way as C's strcmp.
+
+    Parameters
+        first
+            software version to be compared to the second parameter.
+        second
+            software version to be compared to the first parameter.
+    Returns
+        1
+            if first is greater than second.
+        -1
+            if second is greater than first.
+        0
+            if first is considered equal to second.
+        False
+            if neither first nor second are considered valid.
+
+    Algorithm
+        1 Parse both versions.
+            * If parsing fails or any of the versions is empty,
+            return accordingly.
+        2 When the versions' length differs:
+            * Treat a string remainder as lesser than no remainer.
+            * Treat an integer remainer as greater than no remainder.
+        3 Return 1 if first is greater than second.
+        4 Return -1 if first is lesser than second.
+        5 Return 0 if first is equal to second.
     """
     result = False
-    f_matches = parse(f_version)
-    s_matches = parse(s_version)
+    f_matches = parse(first)
+    s_matches = parse(second)
     if f_matches and s_matches:
         if len(f_matches) > len(s_matches):
             greater_len = len(f_matches)
