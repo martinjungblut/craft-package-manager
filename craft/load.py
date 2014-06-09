@@ -69,7 +69,7 @@ def _set(paths):
     units = []
     groups = {}
     virtuals = {}
-    registry = []
+    registry = Registry()
 
     for path in paths:
         try:
@@ -88,12 +88,12 @@ def _set(paths):
             for version in definition[name].iterkeys():
                 version = str(version)
                 for architecture in definition[name][version].iterkeys():
-                    try:
-                        if registry.index(name+version+architecture) >= 0:
-                            error.warning("duplicate package found: {0} {1} ({2}) from repository '{3}'. Ignoring...".format(name, version, architecture, repository))
-                            break
-                    except ValueError:
-                        registry.append(name+version+architecture)
+                    if registry.has_group_or_virtual(name):
+                        error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                    elif registry.has_package(name, version, architecture):
+                        error.warning("duplicate package found: {0}({1}) {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
+                    else:
+                        registry.add_package(name, version, architecture)
                     data = definition[name][version][architecture]
                     package = Package(name, version, architecture)
                     if data['hashes'] is not None:
@@ -107,6 +107,10 @@ def _set(paths):
                             package.conflict(conflict)
                     if data['provides'] is not None:
                         for virtual in data['provides']:
+                            if registry.has_package(virtual):
+                                error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                            elif not registry.has_group_or_virtual(virtual):
+                                registry.add_group_or_virtual(virtual)
                             package.provide(virtual)
                             try:
                                 virtuals[virtual].provided_by(package)
@@ -115,6 +119,10 @@ def _set(paths):
                                 virtuals[virtual].provided_by(package)
                     if data['groups'] is not None:
                         for group in data['groups']:
+                            if registry.has_package(group):
+                                error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                            elif not registry.has_group_or_virtual(group):
+                                registry.add_group_or_virtual(group)
                             package.add_to_group(group)
                             try:
                                 groups[group].add(package)
@@ -234,7 +242,7 @@ def configuration(filepath):
 
     for each in [db, root]:
         if not access(each, W_OK | X_OK):
-            raise SemanticError
+            raise validate.SemanticError
 
     return Configuration(repositories, architectures, default_architecture, groups, db, root)
 
@@ -243,36 +251,19 @@ class Registry(dict):
     whether a specific package, virtual package or group has already
     been found. """
 
-    def has_unit(self, name):
-        """ Checks whether a specific unit is declared in the registry.
+    def add_group_or_virtual(self, name):
+        """ Adds a group or virtual package to the registry.
 
         Parameters
             name
-                the unit's name;
+                the group's or virtual package's name.
         Returns
             True
-                if the unit is declared in the registry.
+                if the group or virtual package was successfully added
+                to the registry
             False
-                if the unit is not declared in the registry.
-        """
-
-        if self.has_key(name):
-            return True
-        else:
-            return False
-
-    def add_unit(self, name):
-        """ Adds a unit to the registry.
-
-        Parameters
-            name
-                the unit's name.
-        Returns
-            True
-                if the unit was successfully added to the registry
-            False
-                if the unit was already present in the registry,
-                and therefore could not be added.
+                if the group or virtual package was already present
+                in the registry, and therefore could not be added.
         """
 
         if self.has_key(name):
@@ -280,33 +271,6 @@ class Registry(dict):
         else:
             self[name] = True
             return True
-
-    def has_package(self, name, version, architecture):
-        """ Checks whether a specific package is declared in the registry.
-
-        Parameters
-            name
-                the package's name.
-            version
-                the package's version.
-            architecture
-                the package's architecture.
-        Returns
-            True
-                if the package is declared in the registry.
-            False
-                if the package is not declared in the registry.
-        """
-
-        try:
-            if self[name][version].has_key(architecture):
-                return True
-            else:
-                return False
-        except KeyError:
-            return False
-        except TypeError:
-            return False
 
     def add_package(self, name, version, architecture):
         """ Adds a package to the registry.
@@ -343,3 +307,56 @@ class Registry(dict):
             self[name][version] = {}
             self[name][version][architecture] = True
             return True
+
+    def has_group_or_virtual(self, name):
+        """ Checks whether a specific group or virtual package
+        is declared in the registry.
+
+        Parameters
+            name
+                the group's or virtual package's name.
+        Returns
+            True
+                the group or virtual package is declared in the registry.
+            False
+                the group or virtual package isn't declared in the registry.
+        """
+
+        if self.has_key(name) and self[name] is True:
+            return True
+        else:
+            return False
+
+
+    def has_package(self, name, version=False, architecture=False):
+        """ Checks whether a specific package is declared in the registry.
+
+        Parameters
+            name
+                the package's name.
+            version
+                the package's version.
+                if this parameter is provided, the 'architecture' parameter
+                should also be provided. otherwise, they are both ignored.
+            architecture
+                the package's architecture.
+                if this parameter is provided, the 'version' parameter
+                should also be provided. otherwise, they are both ignored.
+        Returns
+            True
+                if the package is declared in the registry.
+            False
+                if the package is not declared in the registry.
+        """
+
+        if version and architecture:
+            try:
+                return self[name][version][architecture]
+            except KeyError:
+                return False
+            except TypeError:
+                return False
+        elif self.has_key(name) and self[name] is not True:
+            return True
+        else:
+            return False

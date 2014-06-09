@@ -5,8 +5,6 @@ repositories:
   local:
     target: http://localhost/craft/local
     handler: wget -c
-    #env:
-      #http_proxy: "http://ucs-gw.ucs.br:3128"
 
 architectures:
   default: any

@@ -31,7 +31,7 @@ def parse(other):
         >>> parse('')
         False
     """
-            
+
     matches = re.findall("([\w\(\))]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-za-z0-9\.]*)", other.lower())
     if matches:
         matches = list(matches[0])
