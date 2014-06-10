@@ -1,4 +1,4 @@
-""" Interface for loading Craft-related files. """
+""" Load Craft-specific objects. """
 
 # Standard library imports
 from glob import glob
@@ -41,13 +41,13 @@ def yaml(filepath):
         raise
 
     try:
-        structure = libyaml.load(filehandle)
+        data = libyaml.load(filehandle)
     except libyaml.YAMLError:
         raise YAMLError
     finally:
         filehandle.close()
 
-    return structure
+    return data
 
 def _set(paths):
     """ Loads a Set from one or more YAML files.
