@@ -88,69 +88,55 @@ def _set(paths):
             for version in definition[name].iterkeys():
                 version = str(version)
                 for architecture in definition[name][version].iterkeys():
-                    if registry.has_group(name):
-                        error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
-                        break
-                    elif registry.has_virtual(name):
-                        error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
-                        break
-                    elif registry.has_package(name, version, architecture):
+                    data = definition[name][version][architecture]
+                    package = Package(name, version, architecture, repository, data)
+
+                    try:
+                        registry.add_package(name, version, architecture)
+                    except PackageInRegistry:
                         error.warning("duplicate package found: {0}({1}) {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
                         break
-                    else:
-                        registry.add_package(name, version, architecture)
-                    data = definition[name][version][architecture]
-                    package = Package(name, version, architecture)
-                    if data['hashes'] is not None:
-                        package.hashes = data['hashes']
-                    package.files = data['files']
-                    if data['depends'] is not None:
-                        for dependency in data['depends']:
-                            package.depend(dependency)
-                    if data['conflicts'] is not None:
-                        for conflict in data['conflicts']:
-                            package.conflict(conflict)
+                    except GroupInRegistry:
+                        error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        break
+                    except VirtualPackageInRegistry:
+                        error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        break
+
                     if data['provides'] is not None:
                         for virtual in data['provides']:
-                            if registry.has_package(group):
+                            try:
+                                registry.add_virtual(virtual)
+                            except PackageInRegistry:
                                 error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
                                 break
-                            elif registry.has_group(virtual):
+                            except GroupInRegistry:
                                 error.warning("name conflict between virtual package {0} from repository '{1}' and group {0}. Ignoring.".format(virtual, repository))
                                 break
-                            elif not registry.has_virtual(virtual):
-                                registry.add_virtual(virtual)
-                            package.provide(virtual)
+
                             try:
                                 virtuals[virtual].provided_by(package)
                             except KeyError:
                                 virtuals[virtual] = VirtualPackage(virtual)
                                 virtuals[virtual].provided_by(package)
+
                     if data['groups'] is not None:
                         for group in data['groups']:
-                            if registry.has_package(group):
-                                error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
-                                break
-                            elif registry.has_virtual(group):
+                            try:
+                                registry.add_group(group)
+                            except VirtualPackageInRegistry:
                                 error.warning("name conflict between group {0} from repository '{1}' and virtual package {0}. Ignoring.".format(group, repository))
                                 break
-                            elif not registry.has_group(group):
-                                registry.add_group(group)
-                            package.add_to_group(group)
+                            except PackageInRegistry:
+                                error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                break
+
                             try:
                                 groups[group].add(package)
                             except KeyError:
                                 groups[group] = Group(group)
                                 groups[group].add(package)
-                    if data['flags'] is not None:
-                        package.flags = data['flags']
-                    if data['information']['maintainers'] is not None:
-                        package.maintainers = data['information']['maintainers']
-                    if data['information']['tags'] is not None:
-                        package.tags = data['information']['tags']
-                    if data['information']['misc'] is not None:
-                        package.misc = data['information']['misc']
-                    package.repository = repository
+
                     units.append(package)
 
     for group in groups.iterkeys():
@@ -259,6 +245,19 @@ def configuration(filepath):
 
     return Configuration(repositories, architectures, default_architecture, groups, db, root)
 
+class GroupInRegistry(Exception):
+    """ Indicates the specified group is already present in the registry. """
+    pass
+
+class PackageInRegistry(Exception):
+    """ Indicates the specified package is already present in the registry. """
+    pass
+
+class VirtualPackageInRegistry(Exception):
+    """ Indicates the specified virtual package is already present
+    in the registry. """
+    pass
+
 class Registry(object):
     """ This registry works as an internal namespace. It allows Craft to check
     whether a specific package, virtual package or group has already
@@ -268,27 +267,6 @@ class Registry(object):
         self.virtuals = []
         self.groups = []
         self.packages = []
-
-    def add_group(self, name):
-        """ Adds a group to the registry. May also be used to check
-        whether a group has already been added to the registry.
-
-        Parameters
-            name
-                the group's name.
-        Returns
-            True
-                if the group was successfully added to the registry.
-            False
-                if the group was already present in the registry,
-                and therefore could not be added.
-        """
-
-        if self.has_group(name):
-            return False
-        else:
-            self.groups.append(name)
-            return True
 
     def has_group(self, name):
         """ Checks whether a group has already been added to the registry.
@@ -308,27 +286,6 @@ class Registry(object):
         else:
             return False
 
-    def add_virtual(self, name):
-        """ Adds a virtual package to the registry. May also be used to check
-        whether a virtual package has already been added to the registry.
-
-        Parameters
-            name
-                the virtual package's name.
-        Returns
-            True
-                if the virtual package was successfully added to the registry.
-            False
-                if the virtual package was already present in the registry,
-                and therefore could not be added.
-        """
-
-        if self.has_virtual(name):
-            return False
-        else:
-            self.virtuals.append(name)
-            return True
-
     def has_virtual(self, name):
         """ Checks whether a virtual package has already been added
         to the registry.
@@ -347,30 +304,6 @@ class Registry(object):
             return True
         else:
             return False
-
-    def add_package(self, name, version, architecture):
-        """ Adds a package to the registry.
-
-        Parameters
-            name
-                the package's name.
-            version
-                the package's version.
-            architecture
-                the package's architecture.
-        Returns
-            True
-                if the package was successfully added to the registry
-            False
-                if the package was already present in the registry,
-                and therefore could not be added.
-        """
-
-        if self.has_package(name, version, architecture):
-            return False
-        else:
-            self.packages.append(name+' '+version+' '+architecture)
-            return True
 
     def has_package(self, name, version=False, architecture=False):
         """ Checks whether a package has already been added to the registry.
@@ -398,3 +331,81 @@ class Registry(object):
                     return True
 
         return False
+
+    def add_group(self, name):
+        """ Adds a group to the registry. May also be used to check
+        whether a group has already been added to the registry.
+
+        Parameters
+            name
+                the group's name.
+        Returns
+            True
+                if the group was successfully added to the registry.
+            False
+                if the group was already present in the registry,
+                and therefore could not be added.
+        """
+
+        if self.has_group(name):
+            return False
+        elif self.has_virtual(name):
+            raise VirtualPackageInRegistry
+        elif self.has_package(name):
+            raise PackageInRegistry
+        else:
+            self.groups.append(name)
+            return True
+
+    def add_virtual(self, name):
+        """ Adds a virtual package to the registry. May also be used to check
+        whether a virtual package has already been added to the registry.
+
+        Parameters
+            name
+                the virtual package's name.
+        Returns
+            True
+                if the virtual package was successfully added to the registry.
+            False
+                if the virtual package was already present in the registry,
+                and therefore could not be added.
+        """
+
+        if self.has_group(name):
+            raise GroupInRegistry
+        elif self.has_virtual(name):
+            return False
+        elif self.has_package(name):
+            raise PackageInRegistry
+        else:
+            self.virtuals.append(name)
+            return True
+
+    def add_package(self, name, version, architecture):
+        """ Adds a package to the registry.
+
+        Parameters
+            name
+                the package's name.
+            version
+                the package's version.
+            architecture
+                the package's architecture.
+        Returns
+            True
+                if the package was successfully added to the registry
+            False
+                if the package was already present in the registry,
+                and therefore could not be added.
+        """
+
+        if self.has_group(name):
+            raise GroupInRegistry
+        elif self.has_virtual(name):
+            raise VirtualPackageInRegistry
+        elif self.has_package(name, version, architecture):
+            raise PackageInRegistry
+        else:
+            self.packages.append(name+' '+version+' '+architecture)
+            return True

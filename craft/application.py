@@ -160,7 +160,6 @@ class Craft(object):
                 grouped_packages[package.repository].append(package)
 
         for repository_name in grouped_packages.iterkeys():
-
             try:
                 repository = self.configuration.repositories[repository_name]
             except KeyError:
@@ -174,8 +173,7 @@ class Craft(object):
                 pass
 
             for package in grouped_packages[repository_name]:
-
-                if len(package.hashes) > 0:
+                if package.hashes():
                     n = package.name
                     v = package.version
                     a = package.architecture
