@@ -88,10 +88,15 @@ def _set(paths):
             for version in definition[name].iterkeys():
                 version = str(version)
                 for architecture in definition[name][version].iterkeys():
-                    if registry.has_group_or_virtual(name):
+                    if registry.has_group(name):
                         error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        break
+                    elif registry.has_virtual(name):
+                        error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        break
                     elif registry.has_package(name, version, architecture):
                         error.warning("duplicate package found: {0}({1}) {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
+                        break
                     else:
                         registry.add_package(name, version, architecture)
                     data = definition[name][version][architecture]
@@ -107,10 +112,11 @@ def _set(paths):
                             package.conflict(conflict)
                     if data['provides'] is not None:
                         for virtual in data['provides']:
-                            if registry.has_package(virtual):
-                                error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
-                            elif not registry.has_group_or_virtual(virtual):
-                                registry.add_group_or_virtual(virtual)
+                            if registry.has_group(virtual):
+                                error.warning("name conflict between virtual package {0} from repository '{1}' and group {0}. Ignoring.".format(virtual, repository))
+                                break
+                            elif not registry.has_virtual(virtual):
+                                registry.add_virtual(virtual)
                             package.provide(virtual)
                             try:
                                 virtuals[virtual].provided_by(package)
@@ -119,10 +125,11 @@ def _set(paths):
                                 virtuals[virtual].provided_by(package)
                     if data['groups'] is not None:
                         for group in data['groups']:
-                            if registry.has_package(group):
-                                error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
-                            elif not registry.has_group_or_virtual(group):
-                                registry.add_group_or_virtual(group)
+                            if registry.has_virtual(group):
+                                error.warning("name conflict between group {0} from repository '{1}' and virtual package {0}. Ignoring.".format(group, repository))
+                                break
+                            elif not registry.has_group(group):
+                                registry.add_group(group)
                             package.add_to_group(group)
                             try:
                                 groups[group].add(package)
@@ -271,7 +278,7 @@ class Registry(object):
                 and therefore could not be added.
         """
 
-        if self.groups.index(name) >= 0:
+        if self.has_group(name):
             return False
         else:
             self.groups.append(name)
@@ -290,7 +297,7 @@ class Registry(object):
                 if the group is not in the registry.
         """
 
-        if self.groups.index(name) >= 0:
+        if self.groups.count(name) >= 1:
             return True
         else:
             return False
@@ -310,7 +317,7 @@ class Registry(object):
                 and therefore could not be added.
         """
 
-        if self.virtuals.index(name) >= 0:
+        if self.has_virtual(name):
             return False
         else:
             self.virtuals.append(name)
@@ -330,7 +337,7 @@ class Registry(object):
                 if the virtual package is not in the registry.
         """
 
-        if self.virtuals.index(name) >= 0:
+        if self.virtuals.count(name) >= 1:
             return True
         else:
             return False
@@ -353,7 +360,7 @@ class Registry(object):
                 and therefore could not be added.
         """
 
-        if self.packages.index(name+version+architecture) >= 0:
+        if self.has_package(name, version, architecture):
             return False
         else:
             self.packages.append(name+version+architecture)
@@ -376,7 +383,7 @@ class Registry(object):
                 if the package is not in the registry.
         """
 
-        if self.packages.index(name) >= 0:
+        if self.packages.count(name+version+architecture) >= 1:
             return True
         else:
             return False
