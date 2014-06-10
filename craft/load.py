@@ -246,31 +246,94 @@ def configuration(filepath):
 
     return Configuration(repositories, architectures, default_architecture, groups, db, root)
 
-class Registry(dict):
+class Registry(object):
     """ This registry works as an internal namespace. It allows Craft to check
     whether a specific package, virtual package or group has already
     been found. """
 
-    def add_group_or_virtual(self, name):
-        """ Adds a group or virtual package to the registry.
+    def __init__(self):
+        self.virtuals = []
+        self.groups = []
+        self.packages = []
+
+    def add_group(self, name):
+        """ Adds a group to the registry. May also be used to check
+        whether a group has already been added to the registry.
 
         Parameters
             name
-                the group's or virtual package's name.
+                the group's name.
         Returns
             True
-                if the group or virtual package was successfully added
-                to the registry
+                if the group was successfully added to the registry.
             False
-                if the group or virtual package was already present
-                in the registry, and therefore could not be added.
+                if the group was already present in the registry,
+                and therefore could not be added.
         """
 
-        if self.has_key(name):
+        if self.groups.index(name) >= 0:
             return False
         else:
-            self[name] = True
+            self.groups.append(name)
             return True
+
+    def has_group(self, name):
+        """ Checks whether a group has already been added to the registry.
+
+        Parameters
+            name
+                the group's name.
+        Returns
+            True
+                if the group is in the registry.
+            False
+                if the group is not in the registry.
+        """
+
+        if self.groups.index(name) >= 0:
+            return True
+        else:
+            return False
+
+    def add_virtual(self, name):
+        """ Adds a virtual package to the registry. May also be used to check
+        whether a virtual package has already been added to the registry.
+
+        Parameters
+            name
+                the virtual package's name.
+        Returns
+            True
+                if the virtual package was successfully added to the registry.
+            False
+                if the virtual package was already present in the registry,
+                and therefore could not be added.
+        """
+
+        if self.virtuals.index(name) >= 0:
+            return False
+        else:
+            self.virtuals.append(name)
+            return True
+
+    def has_virtual(self, name):
+        """ Checks whether a virtual package has already been added
+        to the registry.
+
+        Parameters
+            name
+                the virtual package's name.
+        Returns
+            True
+                if the virtual package is in the registry.
+            False
+                if the virtual package is not in the registry.
+        """
+
+        if self.virtuals.index(name) >= 0:
+            return True
+        else:
+            return False
 
     def add_package(self, name, version, architecture):
         """ Adds a package to the registry.
@@ -290,73 +353,30 @@ class Registry(dict):
                 and therefore could not be added.
         """
 
-        if self.has_key(name):
-            if self[name] is True:
-                return False
-            elif not self[name].has_key(version):
-                self[name][version] = {}
-                self[name][version][architecture] = True
-                return True
-            elif not self[name][version].has_key(architecture):
-                self[name][version][architecture] = True
-                return True
-            else:
-                return False
-        else:
-            self[name] = {}
-            self[name][version] = {}
-            self[name][version][architecture] = True
-            return True
-
-    def has_group_or_virtual(self, name):
-        """ Checks whether a specific group or virtual package
-        is declared in the registry.
-
-        Parameters
-            name
-                the group's or virtual package's name.
-        Returns
-            True
-                the group or virtual package is declared in the registry.
-            False
-                the group or virtual package isn't declared in the registry.
-        """
-
-        if self.has_key(name) and self[name] is True:
-            return True
-        else:
+        if self.packages.index(name+version+architecture) >= 0:
             return False
+        else:
+            self.packages.append(name+version+architecture)
+            return True
 
-
-    def has_package(self, name, version=False, architecture=False):
-        """ Checks whether a specific package is declared in the registry.
+    def has_package(self, name, version, architecture):
+        """ Checks whether a package has already been added to the registry.
 
         Parameters
             name
                 the package's name.
             version
                 the package's version.
-                if this parameter is provided, the 'architecture' parameter
-                should also be provided. otherwise, they are both ignored.
             architecture
                 the package's architecture.
-                if this parameter is provided, the 'version' parameter
-                should also be provided. otherwise, they are both ignored.
         Returns
             True
-                if the package is declared in the registry.
+                if the package is in the registry.
             False
-                if the package is not declared in the registry.
+                if the package is not in the registry.
         """
 
-        if version and architecture:
-            try:
-                return self[name][version][architecture]
-            except KeyError:
-                return False
-            except TypeError:
-                return False
-        elif self.has_key(name) and self[name] is not True:
+        if self.packages.index(name) >= 0:
             return True
         else:
             return False
