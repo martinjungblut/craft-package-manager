@@ -112,7 +112,10 @@ def _set(paths):
                             package.conflict(conflict)
                     if data['provides'] is not None:
                         for virtual in data['provides']:
-                            if registry.has_group(virtual):
+                            if registry.has_package(group):
+                                error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                break
+                            elif registry.has_group(virtual):
                                 error.warning("name conflict between virtual package {0} from repository '{1}' and group {0}. Ignoring.".format(virtual, repository))
                                 break
                             elif not registry.has_virtual(virtual):
@@ -125,7 +128,10 @@ def _set(paths):
                                 virtuals[virtual].provided_by(package)
                     if data['groups'] is not None:
                         for group in data['groups']:
-                            if registry.has_virtual(group):
+                            if registry.has_package(group):
+                                error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                break
+                            elif registry.has_virtual(group):
                                 error.warning("name conflict between group {0} from repository '{1}' and virtual package {0}. Ignoring.".format(group, repository))
                                 break
                             elif not registry.has_group(group):
@@ -363,10 +369,10 @@ class Registry(object):
         if self.has_package(name, version, architecture):
             return False
         else:
-            self.packages.append(name+version+architecture)
+            self.packages.append(name+' '+version+' '+architecture)
             return True
 
-    def has_package(self, name, version, architecture):
+    def has_package(self, name, version=False, architecture=False):
         """ Checks whether a package has already been added to the registry.
 
         Parameters
@@ -383,7 +389,12 @@ class Registry(object):
                 if the package is not in the registry.
         """
 
-        if self.packages.count(name+version+architecture) >= 1:
-            return True
+        if version and architecture:
+            if self.packages.count(name+' '+version+' '+architecture) >= 1:
+                return True
         else:
-            return False
+            for package in self.packages:
+                if package.split(' ')[0] == name:
+                    return True
+
+        return False
