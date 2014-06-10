@@ -9,7 +9,7 @@ def set(data):
 
     Parameters
         data
-            data representing a Craft Set.
+            the set's data.
     Raises
         SemanticError
             if the data does not properly represent a Craft Set.
@@ -65,7 +65,7 @@ def package(data):
     """
 
     try:
-        hashes = data['hashes']
+        checksums = data['checksums']
         files_static = data['files']['static']
         depends = data['depends']
         conflicts = data['conflicts']
@@ -96,7 +96,7 @@ def package(data):
                     raise SemanticError
 
     must_be_str_dict = [
-        hashes, misc
+        checksums, misc
     ]
 
     for element in must_be_str_dict:

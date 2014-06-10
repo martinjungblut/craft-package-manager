@@ -9,10 +9,8 @@ from re import findall
 import yaml as libyaml
 
 # Craft imports
-from configuration import Configuration
-from sets import Set
-from units import Package, VirtualPackage, Group
-import error
+from elements import Package, VirtualPackage, Group, Set, Configuration
+from message import warning
 import validate
 
 class YAMLError(Exception):
@@ -94,13 +92,13 @@ def _set(paths):
                     try:
                         registry.add_package(name, version, architecture)
                     except PackageInRegistry:
-                        error.warning("duplicate package found: {0}({1}) {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
+                        warning("duplicate package found: {0}({1}) {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
                         break
                     except GroupInRegistry:
-                        error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
                         break
                     except VirtualPackageInRegistry:
-                        error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
                         break
 
                     if data['provides'] is not None:
@@ -108,10 +106,10 @@ def _set(paths):
                             try:
                                 registry.add_virtual(virtual)
                             except PackageInRegistry:
-                                error.warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
                                 break
                             except GroupInRegistry:
-                                error.warning("name conflict between virtual package {0} from repository '{1}' and group {0}. Ignoring.".format(virtual, repository))
+                                warning("name conflict between virtual package {0} from repository '{1}' and group {0}. Ignoring.".format(virtual, repository))
                                 break
 
                             try:
@@ -125,10 +123,10 @@ def _set(paths):
                             try:
                                 registry.add_group(group)
                             except VirtualPackageInRegistry:
-                                error.warning("name conflict between group {0} from repository '{1}' and virtual package {0}. Ignoring.".format(group, repository))
+                                warning("name conflict between group {0} from repository '{1}' and virtual package {0}. Ignoring.".format(group, repository))
                                 break
                             except PackageInRegistry:
-                                error.warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
                                 break
 
                             try:
@@ -166,7 +164,7 @@ def available(configuration):
     """
 
     try:
-        return _set(glob(configuration.db+'/available/*/*.yml'))
+        return _set(glob(configuration.db()+'/available/*/*.yml'))
     except IOError:
         raise
     except YAMLError:
@@ -192,7 +190,7 @@ def installed(configuration):
     """
 
     try:
-        return _set(glob(configuration.db+'/installed/*/*/*/metadata.yml'))
+        return _set(glob(configuration.db()+'/installed/*/*/*/metadata.yml'))
     except IOError:
         raise
     except YAMLError:
@@ -218,8 +216,8 @@ def configuration(filepath):
     """
 
     try:
-        definition = yaml(filepath)
-        validate.configuration(definition)
+        data = yaml(filepath)
+        validate.configuration(data)
     except IOError:
         raise
     except YAMLError:
@@ -227,23 +225,16 @@ def configuration(filepath):
     except validate.SemanticError:
         raise
 
-    repositories = definition['repositories']
-    default_architecture = definition['architectures']['default']
-    architectures = definition['architectures']['enabled']
-    groups = definition['groups']
-    db = definition['db']
-    root = definition['root']
+    if not data['db'].endswith('/'):
+        data['db'] = data['db']+'/'
+    if not data['root'].endswith('/'):
+        data['root'] = data['root']+'/'
 
-    if not db.endswith('/'):
-        db = db+'/'
-    if not root.endswith('/'):
-        root = root+'/'
-
-    for each in [db, root]:
+    for each in [data['db'], data['root']]:
         if not access(each, W_OK | X_OK):
             raise validate.SemanticError
 
-    return Configuration(repositories, architectures, default_architecture, groups, db, root)
+    return Configuration(data)
 
 class GroupInRegistry(Exception):
     """ Indicates the specified group is already present in the registry. """

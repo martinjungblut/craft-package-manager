@@ -3,7 +3,7 @@
 # Standard library imports
 from os import putenv, unsetenv
 
-class EnvError(Exception):
+class EnvironmentError(Exception):
     """ Raised if there is an error in an environment-related operation. """
     pass
 
@@ -15,7 +15,7 @@ def merge(env):
             dictionary containing the variables' names
             and values to be merged to the current environment.
     Raises
-        EnvError
+        EnvironmentError
             if the specified variables could not be
             merged to the environment.
     """
@@ -24,7 +24,7 @@ def merge(env):
         for variable, value in env.items():
             putenv(variable, value)
     except:
-        raise EnvError
+        raise EnvironmentError
 
 def purge(env):
     """ Purges variables from the current environment.
@@ -34,7 +34,7 @@ def purge(env):
             list containing the variables' names
             to be purged from the current environment.
     Raises
-        EnvError
+        EnvironmentError
             if the specified variables could not be
             purged from the environment.
     """
@@ -43,4 +43,4 @@ def purge(env):
         for variable in env:
             unsetenv(variable)
     except:
-        raise EnvError
+        raise EnvironmentError

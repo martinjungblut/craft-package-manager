@@ -6,15 +6,12 @@ from os import system, mkdir, chdir, rmdir, remove, access, W_OK
 from os.path import isfile, isdir
 from shutil import rmtree
 
-# Third-party imports
-import yaml
-
 # Craft imports
 import archive
 import checksum
 import dump
-import env
-import error
+import environment
+import message
 import load
 
 class InstallError(Exception):
@@ -33,8 +30,16 @@ class SyncError(Exception):
     pass
 
 class Craft(object):
-    def __init__(self):
-        self.configuration = load.configuration('config.yml')
+    def __init__(self, filepath):
+        """ Constructor.
+
+        Parameters
+            filepath
+                absolute filesystem path of the configuration file
+                to be loaded.
+        """
+
+        self.configuration = load.configuration(filepath)
         self.installed = load.installed(self.configuration)
         self.available = load.available(self.configuration)
 
@@ -45,7 +50,8 @@ class Craft(object):
             package
                 the package to be installed.
             filepath
-                the package's archive's absolute path.
+                absolute filesystem path of the package's archive
+                to be installed.
         Raises
             InstallError
                 if any error occurs during the installation.
@@ -57,7 +63,7 @@ class Craft(object):
                 if the installation was successfully completed.
         """
 
-        db = self.configuration.db
+        db = self.configuration.db()
         architecture = package.architecture
         name = package.name
         version = package.version
@@ -77,29 +83,29 @@ class Craft(object):
             try:
                 mkdir(db+'/installed/'+name+'/'+version+'/'+architecture)
             except OSError:
-                error.warning("Failed to create internal directory while installing '{0}'.".format(package))
+                message.warning("Failed to create internal directory while installing '{0}'.".format(package))
                 raise InstallError
         else:
-            error.warning("'{0}' seems to be already installed.".format(package))
+            message.warning("'{0}' seems to be already installed.".format(package))
             raise InstallError
 
         try:
             chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
         except OSError:
-            error.warning("Could not access the directory belonging to package '{0}'.".format(package))
+            message.warning("Could not access the directory belonging to package '{0}'.".format(package))
             raise InstallError
 
-        for hash in package.hashes.iterkeys():
-            if hash == 'sha1':
-                if not checksum.sha1(filepath, package.hashes[hash]):
-                    error.warning("Inconsistent archive for package '{0}'.".format(package))
-                    try:
-                        rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
-                    except OSError:
-                        raise
-                    raise InstallError
-            else:
-                error.warning("'{0}' has an unsupported archive checksum type: {1}. Ignoring...".format(package, hash))
+        sha1 = package.checksum('sha1')
+        if sha1:
+            if not checksum.sha1(filepath, sha1):
+                message.warning("Inconsistent archive for package '{0}'.".format(package))
+                try:
+                    rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
+                except OSError:
+                    raise
+                raise InstallError
+        else:
+            message.warning("Missing SHA-1 checksum for package '{0}'.".format(package))
 
         files = archive.getfiles(filepath)
         if not files:
@@ -120,12 +126,12 @@ class Craft(object):
 
         try:
             if not dump.package(package, 'metadata.yml'):
-                error.warning("Failed to write metadata.yml for package '{0}'.".format(package))
+                message.warning("Failed to write metadata.yml for package '{0}'.".format(package))
                 raise InstallError
         except IOError:
             raise
 
-        if not archive.extract(filepath, self.configuration.root):
+        if not archive.extract(filepath, self.configuration.root()):
             try:
                 rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
             except OSError:
@@ -133,6 +139,76 @@ class Craft(object):
             raise InstallError
 
         self.installed.append(package)
+
+        return True
+
+    def _uninstall(self, package):
+        """ Performs a low-level package uninstallation.
+
+        Parameters
+            package
+                the package to be uninstalled.
+        Raises
+            UninstallError
+                if any error occurs during the uninstallation.
+        Returns
+            True
+                if the uninstallation was successfully completed.
+        """
+
+        if package not in self.installed:
+            message.warning("Package '{0}' is not installed.")
+            raise UninstallError
+
+        db = self.configuration.db()
+        root = self.configuration.root()
+        architecture = package.architecture
+        name = package.name
+        version = package.version
+
+        try:
+            chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
+        except OSError:
+            message.warning("Could not access the directory belonging to package '{0}'.".format(package))
+            raise UninstallError
+
+        try:
+            handle = open('files')
+        except IOError:
+            message.warning("Could not read the files list belonging to package '{0}'.".format(package))
+            raise UninstallError
+
+        files = handle.read().splitlines()
+        handle.close()
+
+        for each in files:
+            if not access(root+each, W_OK):
+                message.warning("Can not remove file '{0}' from package '{1}'.".format(root+each, package))
+                raise UninstallError
+
+        paths = [
+            db+'/installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
+            db+'/installed/'+name+'/'+version+'/'+architecture+'/files',
+            db+'/installed/'+name+'/'+version+'/'+architecture
+        ]
+
+        for each in paths:
+            if not access(each, W_OK):
+                message.warning("Can not remove file '{0}'.".format(each))
+                raise UninstallError
+
+        for each in files:
+            if isdir(root+each):
+                rmdir(root+each)
+            else:
+                remove(root+each)
+        for each in paths:
+            if isdir(each):
+                rmdir(each)
+            else:
+                remove(each)
+
+        self.installed.remove(package)
 
         return True
 
@@ -161,30 +237,30 @@ class Craft(object):
 
         for repository_name in grouped_packages.iterkeys():
             try:
-                repository = self.configuration.repositories[repository_name]
+                repository = self.configuration.repositories()[repository_name]
             except KeyError:
                 raise DownloadError
 
             try:
-                env.merge(repository['env'])
-            except env.EnvError:
-                error.warning("could not merge the environment variables associated to the repository '{0}'!".format(repository_name))
+                environment.merge(repository['env'])
+            except environment.EnvironmentError:
+                message.warning("could not merge the environment variables associated to the repository '{0}'!".format(repository_name))
             except KeyError:
                 pass
 
             for package in grouped_packages[repository_name]:
-                if package.hashes():
+                if package.has_checksum():
                     n = package.name
                     v = package.version
                     a = package.architecture
 
                     directories = [
-                        self.configuration.db+'/available',
-                        self.configuration.db+'/available/'+repository_name,
-                        self.configuration.db+'/available/'+repository_name+'/cache',
-                        self.configuration.db+'/available/'+repository_name+'/cache/'+n,
-                        self.configuration.db+'/available/'+repository_name+'/cache/'+n+'/'+v,
-                        self.configuration.db+'/available/'+repository_name+'/cache/'+n+'/'+v+'/'+a
+                        self.configuration.db()+'/available',
+                        self.configuration.db()+'/available/'+repository_name,
+                        self.configuration.db()+'/available/'+repository_name+'/cache',
+                        self.configuration.db()+'/available/'+repository_name+'/cache/'+n,
+                        self.configuration.db()+'/available/'+repository_name+'/cache/'+n+'/'+v,
+                        self.configuration.db()+'/available/'+repository_name+'/cache/'+n+'/'+v+'/'+a
                     ]
 
                     for directory in directories:
@@ -194,7 +270,7 @@ class Craft(object):
                             pass
 
                     try:
-                        chdir(self.configuration.db+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
+                        chdir(self.configuration.db()+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
                     except OSError:
                         raise DownloadError
 
@@ -205,81 +281,11 @@ class Craft(object):
                             raise DownloadError
 
             try:
-                env.purge(repository['env'].keys())
-            except env.EnvError:
-                error.warning("could not purge the environment variables associated to the repository '{0}'!".format(package.repository))
+                environment.purge(repository['env'].keys())
+            except environment.EnvironmentError:
+                message.warning("could not purge the environment variables associated to the repository '{0}'!".format(package.repository))
             except KeyError:
                 pass
-
-        return True
-
-    def _uninstall(self, package):
-        """ Performs a low-level package uninstallation.
-
-        Parameters
-            package
-                the package to be uninstalled.
-        Raises
-            UninstallError
-                if any error occurs during the uninstallation.
-        Returns
-            True
-                if the uninstallation was successfully completed.
-        """
-
-        if package not in self.installed:
-            error.warning("Package '{0}' is not installed.")
-            raise UninstallError
-
-        db = self.configuration.db
-        root = self.configuration.root
-        architecture = package.architecture
-        name = package.name
-        version = package.version
-
-        try:
-            chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
-        except OSError:
-            error.warning("Could not access the directory belonging to package '{0}'.".format(package))
-            raise UninstallError
-
-        try:
-            handle = open('files')
-        except IOError:
-            error.warning("Could not read the files list belonging to package '{0}'.".format(package))
-            raise UninstallError
-
-        files = handle.read().splitlines()
-        handle.close()
-
-        for each in files:
-            if not access(root+each, W_OK):
-                error.warning("Can not remove file '{0}' from package '{1}'.".format(root+each, package))
-                raise UninstallError
-
-        paths = [
-            db+'/installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
-            db+'/installed/'+name+'/'+version+'/'+architecture+'/files',
-            db+'/installed/'+name+'/'+version+'/'+architecture
-        ]
-
-        for each in paths:
-            if not access(each, W_OK):
-                error.warning("Can not remove file '{0}'.".format(each))
-                raise UninstallError
-
-        for each in files:
-            if isdir(root+each):
-                rmdir(root+each)
-            else:
-                remove(root+each)
-        for each in paths:
-            if isdir(each):
-                rmdir(each)
-            else:
-                remove(each)
-
-        self.installed.remove(package)
 
         return True
 
@@ -294,7 +300,7 @@ class Craft(object):
                 in case the local cache has been successfully cleared.
         """
 
-        for directory in glob(self.configuration.db+'/available/*'):
+        for directory in glob(self.configuration.db()+'/available/*'):
             try:
                 rmtree(directory)
             except OSError:
@@ -324,35 +330,35 @@ class Craft(object):
         except ClearError:
             raise
 
-        for name in self.configuration.repositories.iterkeys():
-            repository = self.configuration.repositories[name]
+        for name in self.configuration.repositories().iterkeys():
+            repository = self.configuration.repositories()[name]
             try:
-                mkdir(self.configuration.db+'/available')
+                mkdir(self.configuration.db()+'/available')
             except OSError:
                 pass
             try:
-                mkdir(self.configuration.db+'/available/'+name)
-                chdir(self.configuration.db+'/available/'+name)
+                mkdir(self.configuration.db()+'/available/'+name)
+                chdir(self.configuration.db()+'/available/'+name)
             except OSError:
                 raise SyncError
 
             try:
-                env.merge(repository['env'])
-            except env.EnvError:
-                error.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
+                environment.merge(repository['env'])
+            except environment.EnvironmentError:
+                message.warning("could not merge the environment variables associated to the repository '{0}'!".format(name))
             except KeyError:
                 pass
 
             handler = repository['handler']
-            for arch in self.configuration.architectures:
+            for arch in self.configuration.architectures():
                 target = repository['target']+'/'+arch+'.yml'
                 if system(handler+' '+target) != 0:
-                    error.warning("could not synchronise architecture '{0}' from repository '{1}'!".format(arch, name))
+                    message.warning("could not synchronise architecture '{0}' from repository '{1}'!".format(arch, name))
 
             try:
-                env.purge(repository['env'].keys())
-            except env.EnvError:
-                error.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
+                environment.purge(repository['env'].keys())
+            except environment.EnvironmentError:
+                message.warning("could not purge the environment variables associated to the repository '{0}'!".format(name))
             except KeyError:
                 pass
 
