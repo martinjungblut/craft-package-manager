@@ -43,7 +43,7 @@ class Craft(object):
         self.installed = load.installed(self.configuration)
         self.available = load.available(self.configuration)
 
-    def _install(self, package, filepath):
+    def _install(self, package, filepath, flags = []):
         """ Performs a low-level package installation.
 
         Parameters
@@ -121,8 +121,7 @@ class Craft(object):
                 files_dump.write(each+'\n')
         except IOError:
             raise InstallError
-        finally:
-            files_dump.close()
+        files_dump.close()
 
         try:
             if not dump.package(package, 'metadata.yml'):

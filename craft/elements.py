@@ -62,6 +62,20 @@ class Package(Unit):
     """ Represents a remotely available package. """
 
     def __init__(self, name, version, architecture, repository, data):
+        """ Constructor.
+
+        Parameters
+            name
+                the package's name.
+            version
+                the package's version.
+            architecture
+                the package's architecture.
+            repository
+                the package's repository.
+            data
+                the package's data.
+        """
 
         super(Package, self).__init__(name)
         self.version = str(version)
@@ -70,6 +84,18 @@ class Package(Unit):
         self.data = data
 
     def has_checksum(self, checksum=False):
+        """ Checks whether the package has a checksum.
+
+        Parameters
+            checksum
+                checksum to be checked for. if this is False, this method will
+                check whether any checksum is available.
+        Returns
+            True
+                if the checksum is available.
+            False
+                if the checksum is not available.
+        """
 
         if self.data['checksums']:
             if not checksum:
@@ -79,11 +105,58 @@ class Package(Unit):
         return False
 
     def checksum(self, checksum):
+        """ Retrieves a specific checksum's value.
+
+        Parameters
+            checksum
+                the checksum's name for the value to be retrieved from.
+        Returns
+            string
+                the checksum value, if the specified was a valid one.
+            False
+                if the specified was a not valid one.
+        """
 
         if self.has_checksum(checksum):
             return self.data['checksums'][checksum]
         else:
             raise ValueError
+
+    def has_flag(self, flag):
+        """ Checks whether the package has a specific flag.
+
+        Parameters
+            flag
+                the flag's name to be checked for.
+        Returns
+            True
+                if the flag has been found.
+            False
+                if the flag has been found.
+        """
+
+        if self.data['flags']:
+            if self.data['flags'].count(flag) >= 1:
+                return True
+        return False
+
+    def add_flag(self, flag):
+        """ Adds a specific flag to the package.
+
+        Parameters
+            flag
+                the flag's name to be added.
+        Returns
+            True
+                if the flag was successfully added to the package.
+            False
+                if the flag could not be added to the package.
+        """
+
+        if not self.has_flag(flag):
+            self.data['flags'].append(flag)
+            return True
+        return False
 
     def __str__(self):
         return "{0}({1}) {2}".format(self.name, self.architecture, self.version)
