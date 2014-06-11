@@ -32,7 +32,7 @@ def set(data):
             raise SemanticError
 
         for version in data[name].iterkeys():
-            if not isinstance(version, str) and not isinstance(version, float):
+            if not isinstance(version, (str, float, int)):
                 raise SemanticError
             elif not isinstance(data[name][version], dict):
                 raise SemanticError

@@ -84,7 +84,6 @@ def _set(paths):
 
         for name in definition.iterkeys():
             for version in definition[name].iterkeys():
-                version = str(version)
                 for architecture in definition[name][version].iterkeys():
                     data = definition[name][version][architecture]
                     package = Package(name, version, architecture, repository, data)
@@ -314,7 +313,7 @@ class Registry(object):
         """
 
         if version and architecture:
-            if self.packages.count(name+' '+version+' '+architecture) >= 1:
+            if self.packages.count('{0} {1} {2}'.format(name, version, architecture)) >= 1:
                 return True
         else:
             for package in self.packages:
@@ -398,5 +397,5 @@ class Registry(object):
         elif self.has_package(name, version, architecture):
             raise PackageInRegistry
         else:
-            self.packages.append(name+' '+version+' '+architecture)
+            self.packages.append('{0} {1} {2}'.format(name, version, architecture))
             return True

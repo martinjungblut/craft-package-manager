@@ -154,6 +154,8 @@ class Package(Unit):
         """
 
         if not self.has_flag(flag):
+            if self.data['flags'] is None:
+                self.data['flags'] = []
             self.data['flags'].append(flag)
             return True
         return False

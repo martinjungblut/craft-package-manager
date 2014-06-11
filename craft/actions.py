@@ -11,8 +11,9 @@ import archive
 import checksum
 import dump
 import environment
-import message
 import load
+import message
+import validate
 
 class InstallError(Exception):
     pass
@@ -40,8 +41,14 @@ class Craft(object):
         """
 
         self.configuration = load.configuration(filepath)
-        self.installed = load.installed(self.configuration)
-        self.available = load.available(self.configuration)
+        try:
+            self.installed = load.installed(self.configuration)
+        except validate.SemanticError:
+            pass
+        try:
+            self.available = load.available(self.configuration)
+        except validate.SemanticError:
+            pass
 
     def _install(self, package, filepath, flags = []):
         """ Performs a low-level package installation.
@@ -69,9 +76,9 @@ class Craft(object):
         version = package.version
 
         required = [
-            db+'/installed/',
-            db+'/installed/'+name,
-            db+'/installed/'+name+'/'+version
+            db+'installed/',
+            db+'installed/'+name,
+            db+'installed/'+name+'/'+version
         ]
         for each in required:
             try:
@@ -79,66 +86,70 @@ class Craft(object):
             except OSError:
                 pass
 
-        if package not in self.installed:
-            try:
-                mkdir(db+'/installed/'+name+'/'+version+'/'+architecture)
-            except OSError:
-                message.warning("Failed to create internal directory while installing '{0}'.".format(package))
-                raise InstallError
-        else:
-            message.warning("'{0}' seems to be already installed.".format(package))
+        if package in self.installed:
+            message.warning("'{0}' is already installed.".format(package))
             raise InstallError
+        else:
+            try:
+                mkdir(db+'installed/'+name+'/'+version+'/'+architecture)
+            except OSError:
+                message.warning("failed to create internal directory while installing '{0}'.".format(package))
+                raise InstallError
 
         try:
-            chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
+            chdir(db+'installed/'+name+'/'+version+'/'+architecture)
         except OSError:
-            message.warning("Could not access the directory belonging to package '{0}'.".format(package))
+            message.warning("could not access the directory belonging to package '{0}'.".format(package))
             raise InstallError
 
-        sha1 = package.checksum('sha1')
-        if sha1:
-            if not checksum.sha1(filepath, sha1):
-                message.warning("Inconsistent archive for package '{0}'.".format(package))
+        for flag in flags:
+            package.add_flag(flag)
+
+        if filepath:
+            sha1 = package.checksum('sha1')
+            if sha1:
+                if not checksum.sha1(filepath, sha1):
+                    message.warning("inconsistent archive for package '{0}'.".format(package))
+                    try:
+                        rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
+                    except OSError:
+                        raise
+                    raise InstallError
+            else:
+                message.warning("missing SHA-1 checksum for package '{0}'.".format(package))
+                raise InstallError
+
+            files = archive.getfiles(filepath)
+            if not files:
                 try:
-                    rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
+                    rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
                 except OSError:
                     raise
                 raise InstallError
-        else:
-            message.warning("Missing SHA-1 checksum for package '{0}'.".format(package))
 
-        files = archive.getfiles(filepath)
-        if not files:
             try:
-                rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
-            except OSError:
-                raise
-            raise InstallError
+                files_dump = open('files', 'w')
+                for each in files:
+                    files_dump.write(each+'\n')
+            except IOError:
+                raise InstallError
+            files_dump.close()
 
-        try:
-            files_dump = open('files', 'w')
-            for each in files:
-                files_dump.write(each+'\n')
-        except IOError:
-            raise InstallError
-        files_dump.close()
+            if not archive.extract(filepath, self.configuration.root()):
+                try:
+                    rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
+                except OSError:
+                    raise
+                raise InstallError
 
         try:
             if not dump.package(package, 'metadata.yml'):
-                message.warning("Failed to write metadata.yml for package '{0}'.".format(package))
+                message.warning("failed to write metadata.yml for package '{0}'.".format(package))
                 raise InstallError
         except IOError:
             raise
 
-        if not archive.extract(filepath, self.configuration.root()):
-            try:
-                rmtree(db+'/installed/'+name+'/'+version+'/'+architecture)
-            except OSError:
-                raise
-            raise InstallError
-
         self.installed.append(package)
-
         return True
 
     def _uninstall(self, package):
@@ -155,60 +166,60 @@ class Craft(object):
                 if the uninstallation was successfully completed.
         """
 
-        if package not in self.installed:
-            message.warning("Package '{0}' is not installed.")
-            raise UninstallError
-
         db = self.configuration.db()
         root = self.configuration.root()
         architecture = package.architecture
         name = package.name
         version = package.version
 
-        try:
-            chdir(db+'/installed/'+name+'/'+version+'/'+architecture)
-        except OSError:
-            message.warning("Could not access the directory belonging to package '{0}'.".format(package))
+        if package not in self.installed:
+            message.warning("package '{0}' is not installed.".format(package))
             raise UninstallError
 
+        try:
+            chdir(db+'installed/'+name+'/'+version+'/'+architecture)
+        except OSError:
+            message.warning("could not access the directory belonging to package '{0}'.".format(package))
+            raise UninstallError
+
+        files = []
         try:
             handle = open('files')
         except IOError:
-            message.warning("Could not read the files list belonging to package '{0}'.".format(package))
-            raise UninstallError
-
-        files = handle.read().splitlines()
-        handle.close()
+            pass
+        else:
+            files = handle.read().splitlines()
+            handle.close()
 
         for each in files:
             if not access(root+each, W_OK):
-                message.warning("Can not remove file '{0}' from package '{1}'.".format(root+each, package))
+                message.warning("cannot remove file '{0}' from package '{1}'.".format(root+each, package))
                 raise UninstallError
 
-        paths = [
-            db+'/installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
-            db+'/installed/'+name+'/'+version+'/'+architecture+'/files',
-            db+'/installed/'+name+'/'+version+'/'+architecture
+        internal = [
+            db+'installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
+            db+'installed/'+name+'/'+version+'/'+architecture+'/files',
+            db+'installed/'+name+'/'+version+'/'+architecture
         ]
 
-        for each in paths:
-            if not access(each, W_OK):
-                message.warning("Can not remove file '{0}'.".format(each))
-                raise UninstallError
+        for each in internal:
+            if isfile(each) or isdir(each):
+                if not access(each, W_OK):
+                    message.warning("cannot remove file '{0}'.".format(each))
+                    raise UninstallError
 
         for each in files:
             if isdir(root+each):
                 rmdir(root+each)
-            else:
+            elif isfile(root+each):
                 remove(root+each)
-        for each in paths:
+        for each in internal:
             if isdir(each):
                 rmdir(each)
-            else:
+            elif isfile(each):
                 remove(each)
 
         self.installed.remove(package)
-
         return True
 
     def download(self, packages):
@@ -288,7 +299,7 @@ class Craft(object):
 
         return True
 
-    def clear(self):
+    def clear(self, cache):
         """ Clear local cache and repositories' metadata.
 
         Raises
@@ -299,14 +310,21 @@ class Craft(object):
                 in case the local cache has been successfully cleared.
         """
 
-        for directory in glob(self.configuration.db()+'/available/*'):
+        if cache:
+            path = self.configuration.db()+'/available/*'
+        else:
+            path = self.configuration.db()+'/available/*/*.yml'
+
+        for each in glob(path):
             try:
-                rmtree(directory)
+                if isdir(each):
+                    rmtree(each)
+                else:
+                    remove(each)
             except OSError:
                 raise ClearError
 
         self.available = load.available(self.configuration)
-
         return True
 
     def sync(self):
@@ -325,7 +343,7 @@ class Craft(object):
         """
 
         try:
-            self.clear()
+            self.clear(False)
         except ClearError:
             raise
 
@@ -333,10 +351,11 @@ class Craft(object):
             repository = self.configuration.repositories()[name]
             try:
                 mkdir(self.configuration.db()+'/available')
+                mkdir(self.configuration.db()+'/available/'+name)
             except OSError:
                 pass
+
             try:
-                mkdir(self.configuration.db()+'/available/'+name)
                 chdir(self.configuration.db()+'/available/'+name)
             except OSError:
                 raise SyncError
@@ -362,5 +381,4 @@ class Craft(object):
                 pass
 
         self.available = load.available(self.configuration)
-
         return True
