@@ -33,4 +33,4 @@ def simple(message):
             string to be displayed.
     """
 
-    print(_isotime()+message)
+    print(_isotime()+' '+message)

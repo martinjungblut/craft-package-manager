@@ -14,6 +14,9 @@ class Unit(object):
 
         self.name = name
 
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
 class Installable(object):
     """ Interface for installable units. """
 
@@ -83,6 +86,15 @@ class Package(Unit):
         self.repository = repository
         self.data = data
 
+    def __unicode__(self):
+        return "{0}({1}) {2}".format(self.name, self.architecture, self.version)
+
+    def __eq__(self, other):
+        if str(self) == str(other):
+            return True
+        else:
+            return False
+
     def has_checksum(self, checksum=False):
         """ Checks whether the package has a checksum.
 
@@ -130,9 +142,9 @@ class Package(Unit):
                 the flag's name to be checked for.
         Returns
             True
-                if the flag has been found.
+                if the flag was found.
             False
-                if the flag has been found.
+                if the flag was not found.
         """
 
         if self.data['flags']:
@@ -160,17 +172,23 @@ class Package(Unit):
             return True
         return False
 
-    def __str__(self):
-        return "{0}({1}) {2}".format(self.name, self.architecture, self.version)
+    def has_tag(self, tag):
+        """ Checks whether the package has a specific tag.
 
-    def __unicode__(self):
-        return self.__str__()
+        Parameters
+            tag
+                the tag's name to be checked for.
+        Returns
+            True
+                if the tag was found.
+            False
+                if the tag was not found.
+        """
 
-    def __eq__(self, other):
-        if str(self) == str(other):
-            return True
-        else:
-            return False
+        if self.data['information']['tags']:
+            if self.data['information']['tags'].count(tag) >= 1:
+                return True
+        return False
 
 class VirtualPackage(Unit):
     """ Represents a virtual package. """
@@ -178,6 +196,9 @@ class VirtualPackage(Unit):
     def __init__(self, name):
         super(VirtualPackage, self).__init__(name)
         self.provided = list()
+
+    def __unicode__(self):
+        return "{0} (virtual package)".format(self.name)
 
     def provided_by(self, package):
         self.provided.append(package)
@@ -195,6 +216,9 @@ class Group(Unit):
 
         super(Group, self).__init__(name)
         self.packages = list()
+
+    def __unicode__(self):
+        return "{0} (group)".format(self.name)
 
     def add(self, package):
         """ Adds a package to the group.
@@ -221,26 +245,32 @@ class Set(list):
         for unit in units:
             self.append(unit)
 
-    def search(self, substring):
-        """ Retrieves a list of units based on a substring match of each
+    def search(self, term):
+        """ Retrieves a list of units based on a term match of each
         unit's name.
 
         Parameters
-            substring
+            term
                 string to be searched for.
+                automatically converted to lowercase.
         Raises
             ValueError
-                if no units could be found matching the specified substring.
+                if no units could be found matching the specified term.
         Returns
             list
                 having all units found.
         """
 
-        substring = str(substring).lower()
+        term = str(term).lower()
         found = []
+
         for unit in self:
-            if unit.name.find(substring) > -1:
+            if unit.name.find(term) > -1:
                 found.append(unit)
+            elif isinstance(unit, Package):
+                if unit.has_tag(term):
+                    found.append(unit)
+
         if len(found) > 0:
             return found
         else:
