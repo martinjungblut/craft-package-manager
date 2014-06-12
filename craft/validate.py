@@ -174,16 +174,20 @@ def configuration(data):
         architectures = data['architectures']
         if not isinstance(architectures, dict):
             raise SemanticError
-        if not isinstance(architectures['default'], str):
+        elif not isinstance(architectures['default'], str):
             raise SemanticError
-        if not isinstance(architectures['enabled'], list):
+        elif not identifier(architectures['default']):
             raise SemanticError
-        if not architectures['default'] in architectures['enabled']:
+        elif not isinstance(architectures['enabled'], list):
+            raise SemanticError
+        elif not architectures['default'] in architectures['enabled']:
             raise SemanticError
     except KeyError:
         raise SemanticError
     for architecture in architectures['enabled']:
         if not isinstance(architecture, str):
+            raise SemanticError
+        elif not identifier(architecture):
             raise SemanticError
 
     try:
@@ -222,7 +226,7 @@ def identifier(target):
             if the identifier is invalid.
     """
 
-    r = findall('([a-zA-Z0-9\-\.]+)', str(target))
+    r = findall('([a-z0-9\-\.]+)', str(target))
     if len(r) >= 1:
         if r[0] == target:
             return True
