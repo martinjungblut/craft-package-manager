@@ -119,13 +119,22 @@ def package(data):
                 elif not isinstance(each[subeach], str):
                     raise SemanticError
 
-    must_be_valid_identifiers = [
+    must_have_valid_identifiers = [
             groups, provides
     ]
-    for each in must_be_valid_identifiers:
+    for each in must_have_valid_identifiers:
         if each is not None:
             for subeach in each:
                 if not identifier(subeach):
+                    raise SemanticError
+
+    must_have_valid_relationships = [
+        depends, conflicts, replaces
+    ]
+    for each in must_have_valid_relationships:
+        if each is not None:
+            for subeach in each:
+                if not dsl.relationship.parse(subeach):
                     raise SemanticError
 
     return True
