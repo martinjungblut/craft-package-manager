@@ -27,15 +27,14 @@ def sha1(filepath, expected):
         handle = open(filepath, 'rb')
     except IOError:
         raise
-
-    buf = handle.read(blocksize)
-    while len(buf) > 0:
-        hasher.update(buf)
+    else:
         buf = handle.read(blocksize)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = handle.read(blocksize)
+        handle.close()
 
-    handle.close()
-
-    if expected == hasher.hexdigest():
+    if hasher.hexdigest() == expected:
         return True
     else:
         return False

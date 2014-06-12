@@ -28,7 +28,8 @@ def package(unit, filepath):
         handle = open(filepath, 'w')
     except IOError:
         raise
+    else:
+        yaml.dump(data, handle, default_flow_style=False)
+        handle.close()
 
-    yaml.dump(data, handle, default_flow_style=False)
-    handle.close()
     return True
