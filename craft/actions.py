@@ -105,18 +105,18 @@ class Craft(object):
         for flag in flags:
             package.add_flag(flag)
 
-        if filepath:
-            sha1 = package.checksum('sha1')
-            if sha1:
-                if not checksum.sha1(filepath, sha1):
-                    message.warning("inconsistent archive for package '{0}'.".format(package))
-                    try:
-                        rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
-                    except OSError:
-                        raise
-                    raise InstallError
-            else:
-                message.warning("missing SHA-1 checksum for package '{0}'.".format(package))
+        sha1 = package.checksum('sha1')
+        if sha1:
+            if not filepath:
+                message.warning("missing archive filepath for non-metapackage '{0}'.".format(package))
+                raise InstallError
+
+            if not checksum.sha1(filepath, sha1):
+                message.warning("inconsistent archive for package '{0}'.".format(package))
+                try:
+                    rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
+                except OSError:
+                    raise
                 raise InstallError
 
             files = archive.getfiles(filepath)
