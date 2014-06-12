@@ -33,7 +33,7 @@ def parse(other):
         False
     """
 
-    matches = re.findall("([\w\(\))]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-za-z0-9\.]*)", other.lower())
+    matches = re.findall("([\w:]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-za-z0-9\.]*)", other.lower())
     if matches:
         matches = list(matches[0])
         if not matches[1] and matches[2]:
@@ -55,7 +55,7 @@ def multiarch(target):
             in case target is invalid, or if the relationship is not
             a multi-architecture one.
     Example
-        >>> multiarch('python(amd64)')
+        >>> multiarch('python:amd64')
         'amd64'
         >>> multiarch('python')
         False
@@ -63,8 +63,7 @@ def multiarch(target):
         False
     """
 
-    matches = re.findall('\w+\((\w+)\)', target.lower())
-    if matches:
-        return matches[0]
-    else:
+    try:
+        return target.split(':')[1]
+    except IndexError:
         return False
