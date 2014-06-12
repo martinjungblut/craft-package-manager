@@ -5,17 +5,17 @@
 # Standard library imports
 import re
 
-def parse(other):
+def parse(target):
     """ Parses a unit relationship.
 
     Parameters
-        other
+        target
             string describing the other end of a unit relationship.
     Returns
         list
             having the parsed fragments of the other end's description.
         False
-            in case other is not valid.
+            in case target is not valid.
     Example
         >>> parse('python >= 2.7.7')
         ['python', '>=', '2.7.7']
@@ -33,14 +33,14 @@ def parse(other):
         False
     """
 
-    matches = re.findall("([\w:]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-z0-9\.]*)", other.lower())
+    matches = re.findall("([a-z0-9\-\.:]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-z0-9\-\.]*)", target)
     if matches:
-        matches = list(matches[0])
-        if not matches[1] and matches[2]:
-            matches[1] = "="
-        return matches
-    else:
-        return False
+        if "".join(matches[0]) == "".join(target.split()):
+            matches = list(matches[0])
+            if not matches[1] and matches[2]:
+                matches[1] = "="
+            return matches
+    return False
 
 def multiarch(target):
     """ Checks whether a unit relationship is a multi-architecture one.
