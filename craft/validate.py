@@ -1,5 +1,8 @@
 """ Validate Craft's objects and data structures. """
 
+# Standard library imports
+from re import findall
+
 class SemanticError(Exception):
     """ Raised if there is a semantic error in an object or data structure. """
     pass
@@ -28,17 +31,23 @@ def set(data):
     for name in data.iterkeys():
         if not isinstance(name, str):
             raise SemanticError
+        elif not identifier(name):
+            raise SemanticError
         elif not isinstance(data[name], dict):
             raise SemanticError
 
         for version in data[name].iterkeys():
             if not isinstance(version, (str, float, int)):
                 raise SemanticError
+            elif not identifier(version):
+                raise SemanticError
             elif not isinstance(data[name][version], dict):
                 raise SemanticError
 
             for architecture in data[name][version].iterkeys():
                 if not isinstance(architecture, str):
+                    raise SemanticError
+                elif not identifier(architecture):
                     raise SemanticError
                 elif not isinstance(data[name][version][architecture], dict):
                     raise SemanticError
@@ -86,27 +95,34 @@ def package(data):
             replaces, provides, groups,
             flags, tags, maintainers
     ]
-
-    for element in must_be_str_list:
-        if element is not None:
-            if not isinstance(element, list):
+    for each in must_be_str_list:
+        if each is not None:
+            if not isinstance(each, list):
                 raise SemanticError
-            for subelement in element:
-                if not isinstance(subelement, str):
+            for subeach in each:
+                if not isinstance(subeach, str):
                     raise SemanticError
 
     must_be_str_dict = [
         checksums, misc
     ]
-
-    for element in must_be_str_dict:
-        if element is not None:
-            if not isinstance(element, dict):
+    for each in must_be_str_dict:
+        if each is not None:
+            if not isinstance(each, dict):
                 raise SemanticError
-            for subelement in element.iterkeys():
-                if not isinstance(subelement, str):
+            for subeach in each.iterkeys():
+                if not isinstance(subeach, str):
                     raise SemanticError
-                elif not isinstance(element[subelement], str):
+                elif not isinstance(each[subeach], str):
+                    raise SemanticError
+
+    must_be_valid_identifiers = [
+            groups, provides
+    ]
+    for each in must_be_valid_identifiers:
+        if each is not None:
+            for subeach in each:
+                if not identifier(subeach):
                     raise SemanticError
 
     return True
@@ -192,3 +208,22 @@ def configuration(data):
         raise SemanticError
 
     return True
+
+def identifier(target):
+    """ Validates an identifier.
+
+    Parameters
+        target
+            the identifier to be validated.
+    Returns
+        True
+            if the identifier is valid.
+        False
+            if the identifier is invalid.
+    """
+
+    r = findall('([a-zA-Z0-9\-\.]+)', str(target))
+    if len(r) >= 1:
+        if r[0] == target:
+            return True
+    return False

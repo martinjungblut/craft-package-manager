@@ -77,6 +77,7 @@ def compare(first, second):
         4 Return -1 if first is lesser than second.
         5 Return 0 if first is equal to second.
     """
+
     result = False
     f_matches = parse(first)
     s_matches = parse(second)
