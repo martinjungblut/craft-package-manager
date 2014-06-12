@@ -33,7 +33,7 @@ def parse(other):
         False
     """
 
-    matches = re.findall("([\w:]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-za-z0-9\.]*)", other.lower())
+    matches = re.findall("([\w:]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-z0-9\.]*)", other.lower())
     if matches:
         matches = list(matches[0])
         if not matches[1] and matches[2]:

@@ -231,3 +231,22 @@ def identifier(target):
         if r[0] == target:
             return True
     return False
+
+def relationship(target):
+    """ Validates a relationship.
+
+    Parameters
+        target
+            the relationship to be validated.
+    Returns
+        True
+            if the relationship is valid.
+        False
+            if the relationship is invalid.
+    """
+
+    matches = findall("([a-z0-9\-\.:]+)\s*(>{0,1}<{0,1}={0,1})\s*([a-z0-9\-\.]*)", target)
+    if matches:
+        if "".join(matches[0]) == "".join(target.split()):
+            return True
+    return False
