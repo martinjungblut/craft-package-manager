@@ -105,7 +105,7 @@ class Craft(object):
         for flag in flags:
             package.add_flag(flag)
 
-        sha1 = package.checksum('sha1')
+        sha1 = package.has_checksum('sha1')
         if sha1:
             if not filepath:
                 message.warning("missing archive filepath for non-metapackage '{0}'.".format(package))
@@ -196,13 +196,13 @@ class Craft(object):
                 message.warning("cannot remove file '{0}' from package '{1}'.".format(root+each, package))
                 raise UninstallError
 
-        internal = [
+        must_remove = [
             db+'installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
             db+'installed/'+name+'/'+version+'/'+architecture+'/files',
             db+'installed/'+name+'/'+version+'/'+architecture
         ]
 
-        for each in internal:
+        for each in must_remove:
             if isfile(each) or isdir(each):
                 if not access(each, W_OK):
                     message.warning("cannot remove file '{0}'.".format(each))
@@ -213,11 +213,21 @@ class Craft(object):
                 rmdir(root+each)
             elif isfile(root+each):
                 remove(root+each)
-        for each in internal:
+        for each in must_remove:
             if isdir(each):
                 rmdir(each)
             elif isfile(each):
                 remove(each)
+
+        try_to_remove = [
+            db+'installed/'+name+'/'+version,
+            db+'installed/'+name
+        ]
+        for each in try_to_remove:
+            try:
+                rmdir(each)
+            except OSError:
+                break
 
         self.installed.remove(package)
         return True
@@ -375,13 +385,17 @@ class Craft(object):
         for name in self.configuration.repositories().iterkeys():
             repository = self.configuration.repositories()[name]
             try:
-                mkdir(self.configuration.db()+'/available')
-                mkdir(self.configuration.db()+'/available/'+name)
+                mkdir(self.configuration.db()+'available')
             except OSError:
                 pass
 
             try:
-                chdir(self.configuration.db()+'/available/'+name)
+                mkdir(self.configuration.db()+'available/'+name)
+            except OSError:
+                pass
+
+            try:
+                chdir(self.configuration.db()+'available/'+name)
             except OSError:
                 raise SyncError
 

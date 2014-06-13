@@ -238,8 +238,9 @@ def identifier(target):
             if the identifier is invalid.
     """
 
-    r = findall('([a-z0-9\-\.]+)', str(target))
-    if len(r) >= 1:
+    target = str(target)
+    r = findall('([a-z0-9\-\.]+)', target)
+    if r:
         if r[0] == target:
             return True
     return False

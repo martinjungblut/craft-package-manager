@@ -96,43 +96,30 @@ class Package(Unit):
             return False
 
     def has_checksum(self, checksum=False):
-        """ Checks whether the package has a checksum.
+        """ Checks whether the package has a specific checksum, or any
+        checksums at all.
 
         Parameters
             checksum
                 checksum to be checked for. if this is False, this method will
-                check whether any checksum is available.
+                check whether any checksum is specified in the package.
         Returns
+            string
+                having the checksum's data in case the parameter checksum
+                was specified.
             True
-                if the checksum is available.
+                if any checksum is specified.
             False
-                if the checksum is not available.
+                if the specified checksum is not specified, or no checksums
+                are specified.
         """
 
         if self.data['checksums']:
             if not checksum:
                 return True
             elif self.data['checksums'].has_key(checksum):
-                return True
+                return self.data['checksums'][checksum]
         return False
-
-    def checksum(self, checksum):
-        """ Retrieves a specific checksum's value.
-
-        Parameters
-            checksum
-                the checksum's name for the value to be retrieved from.
-        Returns
-            string
-                the checksum value, if the specified was a valid one.
-            False
-                if the specified was a not valid one.
-        """
-
-        if self.has_checksum(checksum):
-            return self.data['checksums'][checksum]
-        else:
-            raise ValueError
 
     def has_flag(self, flag):
         """ Checks whether the package has a specific flag.
