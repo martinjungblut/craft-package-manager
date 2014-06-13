@@ -240,7 +240,11 @@ def identifier(target):
 
     target = str(target)
     r = findall('([a-z0-9\-\.]+)', target)
-    if r:
+
+    try:
         if r[0] == target:
             return True
+    except IndexError:
+        pass
+
     return False
