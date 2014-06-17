@@ -325,7 +325,7 @@ class Craft(object):
         """
 
         try:
-            found = set.search(term, False)
+            found = set.search(term)
         except ValueError:
             message.simple("Nothing found while search for the term '{0}'.".format(term))
             raise
@@ -335,8 +335,12 @@ class Craft(object):
             return True
 
     def clear(self, cache):
-        """ Clear local cache and repositories' metadata.
+        """ Clears the local cache and repositories' metadata.
 
+        Parameters
+            cache
+                specifies whether the package archive cache is
+                to be cleared as well. May be True or False.
         Raises
             ClearError
                 in case of failure.
