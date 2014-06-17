@@ -6,6 +6,10 @@ from abc import ABCMeta, abstractmethod
 # Craft imports
 import dsl.relationship
 
+class BrokenDependency(Exception):
+    """ Raised if a unit depends on an unavailable unit. """
+    pass
+
 class Unit(object):
     """ Base unit. """
 
@@ -26,7 +30,7 @@ class Installable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def target_for_installation(self, targets, installed):
+    def target_for_installation(self, installed, available, already_targeted):
         """ Basic prototype. """
 
         raise NotImplementedError
@@ -64,7 +68,7 @@ class Downgradeable(object):
 
         raise NotImplementedError
 
-class Package(Unit):
+class Package(Unit, Installable):
     """ Represents a remotely available package. """
 
     def __init__(self, name, version, architecture, repository, data):
@@ -186,6 +190,20 @@ class Package(Unit):
         if self.data['depends']:
             return self.data['depends']
         return []
+
+    def target_for_installation(self, installed, available, already_targeted):
+        units_to_install = []
+
+        for dependency in self.dependencies():
+            if not already_targeted.check_relationship(dependency):
+                if not installed.check_relationship(dependency):
+                    unit = available.check_relationship(dependency)
+                    if unit:
+                        units_to_install.append(unit)
+                    else:
+                        raise BrokenDependency
+
+        return units_to_install
 
 class VirtualPackage(Unit):
     """ Represents a virtual package. """
@@ -324,7 +342,7 @@ class Set(set):
                 elif parsed[0] == unit.name:
                     return unit
 
-        raise ValueError
+        return False
 
 class Configuration(object):
     """ Represents a Craft configuration. """

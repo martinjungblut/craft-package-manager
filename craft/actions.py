@@ -233,10 +233,17 @@ class Craft(object):
         return True
 
     def install(self, units):
-        all = []
+        to_install = Set()
+
+        # Dependency resolution
         for unit in units:
             if unit in self.installed:
-                message.simple("'{0}' is already installed.".format(unit))
+                message.simple("'{0}' is already installed. Ignoring...".format(unit))
+            else:
+                dependencies = unit.target_for_installation(self.installed, self.available, to_install)
+                for dependency in dependencies:
+                    dependency.add_flag('dependency')
+                    to_install.append(dependency)
 
     def download(self, packages):
         """ Download packages.
