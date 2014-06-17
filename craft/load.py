@@ -64,7 +64,7 @@ def _set(paths):
         Set containing all units found in the specified files.
     """
 
-    units = []
+    units = Set()
     groups = {}
     virtuals = {}
     registry = Registry()
@@ -134,15 +134,15 @@ def _set(paths):
                                 groups[group] = Group(group)
                                 groups[group].add(package)
 
-                    units.append(package)
+                    units.add(package)
 
     for group in groups.iterkeys():
-        units.append(groups[group])
+        units.add(groups[group])
 
     for virtual in virtuals.iterkeys():
-        units.append(virtuals[virtual])
+        units.add(virtuals[virtual])
 
-    return Set(units)
+    return units
 
 def available(configuration):
     """ Loads the 'available' set.

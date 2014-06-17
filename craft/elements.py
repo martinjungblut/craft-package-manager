@@ -243,7 +243,7 @@ class Group(Unit):
 
         self.packages.append(package)
 
-class Set(list):
+class Set(set):
     """ Represents a set of units. """
 
     def __init__(self, units = []):
@@ -256,7 +256,13 @@ class Set(list):
         """
 
         for unit in units:
-            self.append(unit)
+            self.add(unit)
+
+    def __contains__(self, key):
+        for unit in self:
+            if str(unit) == key:
+                return unit
+        return False
 
     def search(self, term):
         """ Retrieves a list of units, using their names and tags.

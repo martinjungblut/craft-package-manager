@@ -149,7 +149,7 @@ class Craft(object):
         except IOError:
             raise
 
-        self.installed.append(package)
+        self.installed.add(package)
         return True
 
     def _uninstall(self, package):
@@ -231,6 +231,12 @@ class Craft(object):
 
         self.installed.remove(package)
         return True
+
+    def install(self, units):
+        all = []
+        for unit in units:
+            if unit in self.installed:
+                message.simple("'{0}' is already installed.".format(unit))
 
     def download(self, packages):
         """ Download packages.
