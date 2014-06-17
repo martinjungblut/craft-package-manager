@@ -325,7 +325,7 @@ class Craft(object):
         """
 
         try:
-            found = set.search(term)
+            found = set.search(term, False)
         except ValueError:
             message.simple("Nothing found while search for the term '{0}'.".format(term))
             raise

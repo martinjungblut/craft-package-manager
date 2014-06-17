@@ -91,13 +91,13 @@ def _set(paths):
                     try:
                         registry.add_package(name, version, architecture)
                     except PackageInRegistry:
-                        warning("duplicate package found: {0}({1}) {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
+                        warning("duplicate package found: {0}:{1} {2} from repository '{3}'. Ignoring.".format(name, architecture, version, repository))
                         break
                     except GroupInRegistry:
-                        warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        warning("name conflict between group {0} from repository '{3}' and package {0}:{1} {2}. Ignoring.".format(name, architecture, version, repository))
                         break
                     except VirtualPackageInRegistry:
-                        warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                        warning("name conflict between virtual package {0} from repository '{3}' and package {0}:{1} {2}. Ignoring.".format(name, architecture, version, repository))
                         break
 
                     if data['provides'] is not None:
@@ -105,7 +105,7 @@ def _set(paths):
                             try:
                                 registry.add_virtual(virtual)
                             except PackageInRegistry:
-                                warning("name conflict between virtual package {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                warning("name conflict between virtual package {0} from repository '{3}' and package {0}:{1} {2}. Ignoring.".format(name, architecture, version, repository))
                                 break
                             except GroupInRegistry:
                                 warning("name conflict between virtual package {0} from repository '{1}' and group {0}. Ignoring.".format(virtual, repository))
@@ -125,7 +125,7 @@ def _set(paths):
                                 warning("name conflict between group {0} from repository '{1}' and virtual package {0}. Ignoring.".format(group, repository))
                                 break
                             except PackageInRegistry:
-                                warning("name conflict between group {0} from repository '{3}' and package {0}({1}) {2}. Ignoring.".format(name, architecture, version, repository))
+                                warning("name conflict between group {0} from repository '{3}' and package {0}:{1} {2}. Ignoring.".format(name, architecture, version, repository))
                                 break
 
                             try:

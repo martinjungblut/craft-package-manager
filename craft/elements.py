@@ -3,6 +3,9 @@
 # Standard library imports
 from abc import ABCMeta, abstractmethod
 
+# Craft imports
+import dsl.relationship
+
 class Unit(object):
     """ Base unit. """
 
@@ -87,13 +90,15 @@ class Package(Unit):
         self.data = data
 
     def __unicode__(self):
-        return "{0}({1}) {2}".format(self.name, self.architecture, self.version)
+        return "{0}:{1} {2}".format(self.name, self.architecture, self.version)
 
     def __eq__(self, other):
-        if str(self) == str(other):
+        if isinstance(other, (Group, VirtualPackage)):
+            if self.name == other.name:
+                return True
+        elif str(self) == str(other):
             return True
-        else:
-            return False
+        return False
 
     def has_checksum(self, checksum=False):
         """ Checks whether the package has a specific checksum, or any
@@ -177,15 +182,28 @@ class Package(Unit):
                 return True
         return False
 
+    def dependencies(self):
+        if self.data['depends']:
+            return self.data['depends']
+        return []
+
 class VirtualPackage(Unit):
     """ Represents a virtual package. """
 
     def __init__(self, name):
         super(VirtualPackage, self).__init__(name)
-        self.provided = list()
+        self.provided = []
 
     def __unicode__(self):
         return "{0} (virtual package)".format(self.name)
+
+    def __eq__(self, other):
+        if isinstance(other, (Group, VirtualPackage, Package)):
+            if self.name == other.name:
+                return True
+        elif str(self) == str(other):
+            return True
+        return False
 
     def provided_by(self, package):
         self.provided.append(package)
@@ -202,10 +220,18 @@ class Group(Unit):
         """
 
         super(Group, self).__init__(name)
-        self.packages = list()
+        self.packages = []
 
     def __unicode__(self):
         return "{0} (group)".format(self.name)
+
+    def __eq__(self, other):
+        if isinstance(other, (Group, VirtualPackage, Package)):
+            if self.name == other.name:
+                return True
+        elif str(self) == str(other):
+            return True
+        return False
 
     def add(self, package):
         """ Adds a package to the group.
@@ -233,8 +259,7 @@ class Set(list):
             self.append(unit)
 
     def search(self, term):
-        """ Retrieves a list of units based on a term match of each
-        unit's name.
+        """ Retrieves a list of units, using their names and tags.
 
         Parameters
             term
@@ -242,7 +267,8 @@ class Set(list):
                 automatically converted to lowercase.
         Raises
             ValueError
-                if no units could be found matching the specified term.
+                if no units could be found matching
+                the specified term.
         Returns
             list
                 having all units found.
@@ -263,24 +289,31 @@ class Set(list):
         else:
             raise ValueError
 
-    def get(self, name):
-        """ Retrieves a Unit by name.
+    def check_relationship(self, target):
+        """ Checks whether the set has an appropriate unit
+        matching the other end of a given relationship.
 
         Parameters
-            name
-                name to be searched for.
+            target
+                string describing the other end of a unit relationship.
         Raises
             ValueError
-                if no units could be found matching the specified name.
+                if no units were found matching the specified
+                relationship.
         Returns
-            Unit
+            unit
+                a unit that confirms the relationship's validness.
         """
 
-        name = str(name).lower()
+        parsed = dsl.relationship.parse(target)
 
-        for unit in self:
-            if unit.name == name:
-                return unit
+        if parsed:
+            for unit in self:
+                if parsed[1] and isinstance(unit, Package):
+                    if parsed[0] == unit.name and parsed[1] == unit.architecture:
+                        return unit
+                elif parsed[0] == unit.name:
+                    return unit
 
         raise ValueError
 
