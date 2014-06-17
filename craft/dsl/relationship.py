@@ -28,6 +28,8 @@ def parse(target):
     """
 
     matches = re.findall('(?=[a-z0-9\-\.]+)(:{0,1}[a-z0-9\-\.]+)?', target)
+
     if matches:
-        return matches[0]
+        return matches
+
     return False

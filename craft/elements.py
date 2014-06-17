@@ -309,9 +309,12 @@ class Set(list):
 
         if parsed:
             for unit in self:
-                if parsed[1] and isinstance(unit, Package):
-                    if parsed[0] == unit.name and parsed[1] == unit.architecture:
-                        return unit
+                if isinstance(unit, Package):
+                    try:
+                        if parsed[0] == unit.name and parsed[1] == unit.architecture:
+                            return unit
+                    except IndexError:
+                        pass
                 elif parsed[0] == unit.name:
                     return unit
 
