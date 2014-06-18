@@ -92,6 +92,7 @@ class Package(Unit, Installable):
         self.architecture = str(architecture)
         self.repository = repository
         self.data = data
+        self.temporary_flags = []
 
     def __unicode__(self):
         return "{0}:{1} {2}".format(self.name, self.architecture, self.version)
@@ -167,6 +168,50 @@ class Package(Unit, Installable):
             self.data['flags'].append(flag)
             return True
         return False
+
+    def has_temporary_flag(self, flag):
+        """ Checks whether the package has a specific temporary flag.
+
+        Parameters
+            flag
+                the temporary flag's name to be checked for.
+        Returns
+            True
+                if the temporary flag was found.
+            False
+                if the temporary flag was not found.
+        """
+
+        if self.temporary_flags.count(flag) >= 1:
+            return True
+        return False
+
+    def add_temporary_flag(self, flag):
+        """ Adds a specific temporary flag to the package.
+
+        Parameters
+            flag
+                the temporary flag's name to be added.
+        Returns
+            True
+                if the temporary flag was successfully added to the package.
+            False
+                if the temporary flag could not be added to the package.
+        """
+
+        if not self.has_temporary_flag(flag):
+            self.temporary_flags.append(flag)
+            return True
+        return False
+
+    def save_temporary_flags(self):
+        """ Saves the current temporary flags
+        as regular flags, and erases them from the
+        temporary flag cache afterwards. """
+
+        for flag in self.temporary_flags:
+            self.add_flag(flag)
+        self.temporary_flags = []
 
     def has_tag(self, tag):
         """ Checks whether the package has a specific tag.
