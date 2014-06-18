@@ -7,7 +7,7 @@ from os.path import isfile, isdir
 from shutil import rmtree
 
 # Craft imports
-from elements import Set
+from elements import Set, BrokenDependency
 import archive
 import checksum
 import dump
@@ -241,9 +241,12 @@ class Craft(object):
             if unit in self.installed:
                 message.simple("'{0}' is already installed. Ignoring...".format(unit))
             else:
-                targets = unit.target_for_installation(self.installed, self.available, to_install)
-                for target in targets:
-                    to_install.add(target)
+                try:
+                    targets = unit.target_for_installation(self.installed, self.available, to_install)
+                    for target in targets:
+                        to_install.add(target)
+                except BrokenDependency:
+                    raise
 
         for unit in to_install:
             if unit in self.installed:
