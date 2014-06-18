@@ -192,13 +192,21 @@ class Package(Unit, Installable):
         return []
 
     def target_for_installation(self, installed, available, already_targeted):
-        units_to_install = []
+
+        self.add_flag('installed-by-user')
+        units_to_install = [self]
 
         for dependency in self.dependencies():
+            parsed = dsl.relationship.parse(dependency)
+            if not parsed.count(self.architecture):
+                parsed.append(self.architecture)
+            dependency = '{0}:{1}'.format(parsed[0], parsed[1])
             if not already_targeted.check_relationship(dependency):
                 if not installed.check_relationship(dependency):
                     unit = available.check_relationship(dependency)
                     if unit:
+                        if isinstance(unit, Package):
+                            unit.add_flag('installed-as-dependency')
                         units_to_install.append(unit)
                     else:
                         raise BrokenDependency

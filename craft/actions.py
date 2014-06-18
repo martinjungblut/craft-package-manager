@@ -7,6 +7,7 @@ from os.path import isfile, isdir
 from shutil import rmtree
 
 # Craft imports
+from elements import Set
 import archive
 import checksum
 import dump
@@ -240,10 +241,14 @@ class Craft(object):
             if unit in self.installed:
                 message.simple("'{0}' is already installed. Ignoring...".format(unit))
             else:
-                dependencies = unit.target_for_installation(self.installed, self.available, to_install)
-                for dependency in dependencies:
-                    dependency.add_flag('dependency')
-                    to_install.append(dependency)
+                targets = unit.target_for_installation(self.installed, self.available, to_install)
+                for target in targets:
+                    to_install.add(target)
+
+        for unit in to_install:
+            if unit in self.installed:
+                message.simple("'{0}' is already installed. Ignoring...".format(unit))
+                to_install.remove(unit)
 
     def download(self, packages):
         """ Download packages.
