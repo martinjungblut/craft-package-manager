@@ -238,7 +238,7 @@ class Package(Unit, Installable):
 
     def target_for_installation(self, installed, available, already_targeted):
 
-        self.add_flag('installed-by-user')
+        self.add_temporary_flag('installed-by-user')
         units_to_install = [self]
 
         for dependency in self.dependencies():
@@ -251,7 +251,7 @@ class Package(Unit, Installable):
                     unit = available.check_relationship(dependency)
                     if unit:
                         if isinstance(unit, Package):
-                            unit.add_flag('installed-as-dependency')
+                            unit.add_temporary_flag('installed-as-dependency')
                         units_to_install.append(unit)
                     else:
                         raise BrokenDependency
