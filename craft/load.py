@@ -271,10 +271,7 @@ class Registry(object):
                 if the group is not in the registry.
         """
 
-        if self.groups.count(name) >= 1:
-            return True
-        else:
-            return False
+        return name in self.groups
 
     def has_virtual(self, name):
         """ Checks whether a virtual package has already been added
@@ -290,10 +287,7 @@ class Registry(object):
                 if the virtual package is not in the registry.
         """
 
-        if self.virtuals.count(name) >= 1:
-            return True
-        else:
-            return False
+        return name in self.virtuals
 
     def has_package(self, name, version=False, architecture=False):
         """ Checks whether a package has already been added to the registry.
@@ -313,8 +307,7 @@ class Registry(object):
         """
 
         if version and architecture:
-            if self.packages.count('{0} {1} {2}'.format(name, version, architecture)) >= 1:
-                return True
+            return '{0} {1} {2}'.format(name, version, architecture) in self.packages
         else:
             for package in self.packages:
                 if package.split(' ')[0] == name:

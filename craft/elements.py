@@ -199,7 +199,7 @@ class Package(Unit, Installable):
         """
 
         if self.data['information']['tags']:
-            if self.data['information']['tags'].count(tag) >= 1:
+            if tag in self.data['information']['tags']:
                 return True
         return False
 
