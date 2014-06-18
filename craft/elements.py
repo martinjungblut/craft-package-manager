@@ -10,6 +10,10 @@ class BrokenDependency(Exception):
     """ Raised if a unit depends on an unavailable unit. """
     pass
 
+class Conflict(Exception):
+    """ Raised if there is a conflict between units. """
+    pass
+
 class Unit(object):
     """ Base unit. """
 
@@ -131,24 +135,6 @@ class Package(Unit, Installable):
                 return self.data['checksums'][checksum]
         return False
 
-    def has_flag(self, flag):
-        """ Checks whether the package has a specific flag.
-
-        Parameters
-            flag
-                the flag's name to be checked for.
-        Returns
-            True
-                if the flag was found.
-            False
-                if the flag was not found.
-        """
-
-        if self.data['flags']:
-            if self.data['flags'].count(flag) >= 1:
-                return True
-        return False
-
     def add_flag(self, flag):
         """ Adds a specific flag to the package.
 
@@ -162,28 +148,13 @@ class Package(Unit, Installable):
                 if the flag could not be added to the package.
         """
 
-        if not self.has_flag(flag):
-            if self.data['flags'] is None:
-                self.data['flags'] = []
+        if self.data['flags'] is None:
+            self.data['flags'] = []
+
+        if flag not in self.data['flags']:
             self.data['flags'].append(flag)
             return True
-        return False
 
-    def has_temporary_flag(self, flag):
-        """ Checks whether the package has a specific temporary flag.
-
-        Parameters
-            flag
-                the temporary flag's name to be checked for.
-        Returns
-            True
-                if the temporary flag was found.
-            False
-                if the temporary flag was not found.
-        """
-
-        if self.temporary_flags.count(flag) >= 1:
-            return True
         return False
 
     def add_temporary_flag(self, flag):
@@ -199,9 +170,10 @@ class Package(Unit, Installable):
                 if the temporary flag could not be added to the package.
         """
 
-        if not self.has_temporary_flag(flag):
+        if flag not in self.temporary_flags:
             self.temporary_flags.append(flag)
             return True
+
         return False
 
     def save_temporary_flags(self):
@@ -237,6 +209,27 @@ class Package(Unit, Installable):
         return []
 
     def target_for_installation(self, installed, available, already_targeted):
+        """ Triggered when the package is a target for an
+        installation operation.
+
+        Parameters
+            installed
+                Set having all currently installed units on the system.
+            available
+                Set having all currently available units on the system.
+            already targeted
+                Set having all other units that are already
+                targeted for installation.
+        Raises
+            BrokenDependency
+                if a dependency could not be satisfied.
+        Returns
+            list
+                having all units that must be targeted
+                for installation in order for the package to be successfully
+                installed. This list includes the package's dependencies,
+                as well as the package itself.
+        """
 
         self.add_temporary_flag('installed-by-user')
         units_to_install = [self]
