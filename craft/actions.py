@@ -7,7 +7,7 @@ from os.path import isfile, isdir
 from shutil import rmtree
 
 # Craft imports
-from elements import Set, BrokenDependency
+from elements import Set, Incompatible, BrokenDependency, Conflict
 import archive
 import checksum
 import dump
@@ -16,6 +16,7 @@ import load
 import message
 import validate
 
+# Exceptions
 class InstallError(Exception):
     pass
 
@@ -29,6 +30,10 @@ class ClearError(Exception):
     pass
 
 class SyncError(Exception):
+    pass
+
+class UnitNotAllowed(Exception):
+    """ Raised if a given unit is not allowed to be installed. """
     pass
 
 class Craft(object):
@@ -248,10 +253,26 @@ class Craft(object):
                 except BrokenDependency:
                     raise
 
+        # Remove all already installed units from the list
         for unit in to_install:
             if unit in self.installed:
                 message.simple("'{0}' is already installed. Ignoring...".format(unit))
                 to_install.remove(unit)
+
+        # Check if any of the units is not allowed due to one their CPU
+        # architectures not being enabled
+        for unit in to_install:
+            if not self.configuration.is_unit_allowed(unit):
+                message.simple("'{0}' is not allowed to be installed since its architecture is not currently enabled.".format(unit))
+                raise UnitNotAllowed
+
+        # Check for conflicts
+        for unit in to_install:
+            if isinstance(unit, Incompatible):
+                try:
+                    unit.check_for_conflicts(self.installed, to_install)
+                except Conflict:
+                    raise
 
     def download(self, packages):
         """ Download packages.

@@ -6,6 +6,7 @@ from abc import ABCMeta, abstractmethod
 # Craft imports
 import dsl.relationship
 
+# Exceptions
 class BrokenDependency(Exception):
     """ Raised if a unit depends on an unavailable unit. """
     pass
@@ -34,9 +35,7 @@ class Installable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def target_for_installation(self, installed, available, already_targeted):
-        """ Basic prototype. """
-
+    def target_for_installation(self, installed, available, targeted):
         raise NotImplementedError
 
 class Uninstallable(object):
@@ -46,8 +45,6 @@ class Uninstallable(object):
 
     @abstractmethod
     def target_for_uninstallation(self, targets, installed):
-        """ Basic prototype. """
-
         raise NotImplementedError
 
 class Upgradeable(object):
@@ -57,8 +54,6 @@ class Upgradeable(object):
 
     @abstractmethod
     def target_for_upgrade(self, targets, installed):
-        """ Basic prototype. """
-
         raise NotImplementedError
 
 class Downgradeable(object):
@@ -68,11 +63,18 @@ class Downgradeable(object):
 
     @abstractmethod
     def target_for_downgrade(self, targets, installed):
-        """ Basic prototype. """
-
         raise NotImplementedError
 
-class Package(Unit, Installable):
+class Incompatible(object):
+    """ Interface for units that may raise conflicts. """
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def check_for_conflicts(self, installed, targeted):
+        raise NotImplementedError
+
+class Package(Unit, Installable, Incompatible):
     """ Represents a remotely available package. """
 
     def __init__(self, name, version, architecture, repository, data):
@@ -208,7 +210,12 @@ class Package(Unit, Installable):
             return self.data['depends']
         return []
 
-    def target_for_installation(self, installed, available, already_targeted):
+    def conflicts(self):
+        if self.data['conflicts']:
+            return self.data['conflicts']
+        return []
+
+    def target_for_installation(self, installed, available, targeted):
         """ Triggered when the package is a target for an
         installation operation.
 
@@ -217,7 +224,7 @@ class Package(Unit, Installable):
                 Set having all currently installed units on the system.
             available
                 Set having all currently available units on the system.
-            already targeted
+            targeted
                 Set having all other units that are already
                 targeted for installation.
         Raises
@@ -235,11 +242,7 @@ class Package(Unit, Installable):
         units_to_install = [self]
 
         for dependency in self.dependencies():
-            parsed = dsl.relationship.parse(dependency)
-            if not parsed.count(self.architecture):
-                parsed.append(self.architecture)
-            dependency = '{0}:{1}'.format(parsed[0], parsed[1])
-            if not already_targeted.check_relationship(dependency):
+            if not targeted.check_relationship(dependency):
                 if not installed.check_relationship(dependency):
                     unit = available.check_relationship(dependency)
                     if unit:
@@ -250,6 +253,27 @@ class Package(Unit, Installable):
                         raise BrokenDependency
 
         return units_to_install
+
+    def check_for_conflicts(self, installed, targeted):
+        """ Checks whether the package conflicts with any units
+        that are already installed or targeted for installation.
+
+        Parameters
+            installed
+                Set having all currently installed units on the system.
+            targeted
+                Set having all other units that are already
+                targeted for installation.
+        Raises
+            Conflict
+                if a conflict was found.
+        """
+
+        for conflict in self.conflicts():
+            if installed.check_relationship(conflict):
+                raise Conflict
+            elif targeted.check_relationship(conflict):
+                raise Conflict
 
 class VirtualPackage(Unit):
     """ Represents a virtual package. """
