@@ -288,7 +288,7 @@ class Package(Unit, Installable, Incompatible):
             elif targeted.target(conflict):
                 raise Conflict
 
-class VirtualPackage(Unit):
+class VirtualPackage(Unit, Installable):
     """ Represents a virtual package. """
 
     def __init__(self, name):
@@ -357,6 +357,7 @@ class VirtualPackage(Unit):
         print("Your choice was: '{0}'".format(package))
 
         targeted.add(self)
+        package.add_temporary_flag('installed-by-user')
         targeted.add(package)
 
         targets = package.target_for_installation(installed, available, targeted)
@@ -366,7 +367,7 @@ class VirtualPackage(Unit):
 
         return [package]
 
-class Group(Unit):
+class Group(Unit, Installable):
     """ Represents a group of packages. """
 
     def __init__(self, name):
@@ -400,6 +401,35 @@ class Group(Unit):
         """
 
         self.packages.append(package)
+
+    def target_for_installation(self, installed, available, targeted):
+        """ Triggered when the group is a target for an
+        installation operation.
+
+        Parameters
+            installed
+                Set having all currently installed units on the system.
+            available
+                Set having all currently available units on the system.
+            targeted
+                Set having all other units that are already
+                targeted for installation.
+        Returns
+            list
+                having all units that were targeted
+                for installation in order for the group to be
+                successfully installed.
+        """
+
+        for package in self.packages:
+            package.add_temporary_flag('installed-by-user')
+            targeted.add(package)
+            targets = package.target_for_installation(installed, available, targeted)
+            if targets:
+                for target in targets:
+                    targeted.add(target)
+
+        return self.packages
 
 class Set(set):
     """ Represents a set of units. """
