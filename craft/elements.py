@@ -359,6 +359,11 @@ class VirtualPackage(Unit):
         targeted.add(self)
         targeted.add(package)
 
+        targets = package.target_for_installation(installed, available, targeted)
+        if targets:
+            for target in targets:
+                targeted.add(target)
+
         return [package]
 
 class Group(Unit):
