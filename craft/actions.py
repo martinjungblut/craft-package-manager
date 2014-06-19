@@ -7,7 +7,7 @@ from os.path import isfile, isdir
 from shutil import rmtree
 
 # Craft imports
-from elements import Set, Incompatible, BrokenDependency, Conflict, Package
+from elements import Set, Incompatible, BrokenDependency, Conflict, Package, Group, VirtualPackage
 import archive
 import checksum
 import dump

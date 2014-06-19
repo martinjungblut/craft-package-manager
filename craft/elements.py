@@ -309,6 +309,58 @@ class VirtualPackage(Unit):
     def provided_by(self, package):
         self.provided.append(package)
 
+    def target_for_installation(self, installed, available, targeted):
+        """ Triggered when the virtual package is a target for an
+        installation operation.
+
+        Parameters
+            installed
+                Set having all currently installed units on the system.
+            available
+                Set having all currently available units on the system.
+            targeted
+                Set having all other units that are already
+                targeted for installation.
+        Returns
+            list
+                having all units that were targeted
+                for installation in order for the virtual package to be
+                successfully installed.
+        """
+
+        organised = {}
+        counter = 0
+        valid_choice = False
+
+        for package in self.provided:
+            organised[counter] = package
+            counter = counter+1
+
+        while not valid_choice:
+            print("Please choose a package for providing '{0}'.".format(self))
+            for each in organised.iterkeys():
+                print("{0} - {1}".format(each, organised[each]))
+
+            choice = raw_input()
+
+            try:
+                choice = int(choice)
+            except ValueError:
+                print("The specified value is invalid. Please try again.")
+            else:
+                if not -1 < choice < len(organised):
+                    print("The specified value is invalid. Please try again.")
+                else:
+                    valid_choice = True
+
+        package = organised[choice]
+        print("Your choice was: '{0}'".format(package))
+
+        targeted.add(self)
+        targeted.add(package)
+
+        return [package]
+
 class Group(Unit):
     """ Represents a group of packages. """
 
