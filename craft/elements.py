@@ -187,6 +187,11 @@ class Package(Unit, Installable, Incompatible):
             self.add_flag(flag)
         self.temporary_flags = []
 
+    def erase_temporary_flags(self):
+        """ Erases the current temporary flags. """
+
+        self.temporary_flags = []
+
     def has_tag(self, tag):
         """ Checks whether the package has a specific tag.
 
@@ -218,6 +223,7 @@ class Package(Unit, Installable, Incompatible):
     def target_for_installation(self, installed, available, targeted):
         """ Triggered when the package is a target for an
         installation operation.
+        This is a recursive method.
 
         Parameters
             installed
@@ -232,27 +238,34 @@ class Package(Unit, Installable, Incompatible):
                 if a dependency could not be satisfied.
         Returns
             list
-                having all units that must be targeted
+                having all units that were targeted
                 for installation in order for the package to be successfully
-                installed. This list includes the package's dependencies,
-                as well as the package itself.
+                installed. This list includes the package's dependencies.
         """
 
-        self.add_temporary_flag('installed-by-user')
-        units_to_install = [self]
+        units_found = []
 
         for dependency in self.dependencies():
-            if not targeted.check_relationship(dependency):
-                if not installed.check_relationship(dependency):
-                    unit = available.check_relationship(dependency)
+            if not targeted.target(dependency):
+                if not installed.target(dependency):
+                    unit = available.target(dependency)
                     if unit:
                         if isinstance(unit, Package):
                             unit.add_temporary_flag('installed-as-dependency')
-                        units_to_install.append(unit)
+                        units_found.append(unit)
                     else:
                         raise BrokenDependency
 
-        return units_to_install
+        for unit in units_found:
+            targeted.add(unit)
+
+        for unit in units_found:
+            targets = unit.target_for_installation(installed, available, targeted)
+            if targets:
+                for target in targets:
+                    targeted.add(target)
+
+        return units_found
 
     def check_for_conflicts(self, installed, targeted):
         """ Checks whether the package conflicts with any units
@@ -270,9 +283,9 @@ class Package(Unit, Installable, Incompatible):
         """
 
         for conflict in self.conflicts():
-            if installed.check_relationship(conflict):
+            if installed.target(conflict):
                 raise Conflict
-            elif targeted.check_relationship(conflict):
+            elif targeted.target(conflict):
                 raise Conflict
 
 class VirtualPackage(Unit):
@@ -383,23 +396,20 @@ class Set(set):
         else:
             raise ValueError
 
-    def check_relationship(self, target):
-        """ Checks whether the set has an appropriate unit
-        matching the other end of a given relationship.
+    def target(self, targeting_description):
+        """ Targets a specific unit based on a targeting description.
 
         Parameters
-            target
-                string describing the other end of a unit relationship.
-        Raises
-            ValueError
-                if no units were found matching the specified
-                relationship.
+            targeting_description
+                string describing a target.
         Returns
             unit
-                a unit that confirms the relationship's validness.
+                the targeted unit.
+            False
+                if no units could be targeted.
         """
 
-        parsed = dsl.relationship.parse(target)
+        parsed = dsl.relationship.parse(targeting_description)
 
         if parsed:
             for unit in self:
