@@ -460,7 +460,7 @@ class Configuration(object):
                 in case the architecture is not enabled.
         """
 
-        if architecture in self.data['architectures']:
+        if architecture in self.architectures():
             return True
         else:
             return False
