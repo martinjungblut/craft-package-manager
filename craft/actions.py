@@ -239,22 +239,45 @@ class Craft(object):
         return True
 
     def install(self, units):
+        """ Installs a collection of units.
+        Resolves dependencies, handles conflicts and checks
+        for disabled CPU architectures.
+
+        Parameters
+            units
+                iterable having all units to be installed.
+        Raises
+            BrokenDependency
+                if a dependency could not be resolved.
+            Conflict
+                if a conflict was found between two units.
+            UnitNotAllowed
+                if at least one of the units targeted for installation
+                is not able to be installed due to its CPU architecture
+                being disabled.
+        Returns
+            list
+                having all Package units to be installed.
+        """
         to_install = Set()
+
+        # Remove all already installed units from the list
+        for unit in to_install:
+            if unit in self.installed:
+                message.simple("'{0}' is already installed. Ignoring...".format(unit))
+                to_install.remove(unit)
 
         # Dependency resolution
         for unit in units:
-            if unit in self.installed:
-                message.simple("'{0}' is already installed. Ignoring...".format(unit))
-            else:
-                if isinstance(unit, Package):
-                    unit.add_temporary_flag('installed-by-user')
-                to_install.add(unit)
-                try:
-                    unit.target_for_installation(self.installed, self.available, to_install)
-                except BrokenDependency:
-                    raise
+            if isinstance(unit, Package):
+                unit.add_temporary_flag('installed-by-user')
+            to_install.add(unit)
+            try:
+                unit.target_for_installation(self.installed, self.available, to_install)
+            except BrokenDependency:
+                raise
 
-        # Remove all already installed units from the list
+        # Remove all already installed units from the list a second time
         for unit in to_install:
             if unit in self.installed:
                 message.simple("'{0}' is already installed. Ignoring...".format(unit))
@@ -274,6 +297,14 @@ class Craft(object):
                     unit.check_for_conflicts(self.installed, to_install)
                 except Conflict:
                     raise
+
+        # Remove Groups and VirtualPackages
+        to_install = list(to_install)
+        for unit in to_install:
+            if isinstance(unit, (Group, VirtualPackage)):
+                to_install.remove(unit)
+
+        return to_install
 
     def download(self, packages):
         """ Download packages.
