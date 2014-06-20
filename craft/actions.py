@@ -259,6 +259,7 @@ class Craft(object):
             list
                 having all Package units to be installed.
         """
+
         to_install = Set()
 
         # Remove all already installed units from the list
@@ -305,6 +306,22 @@ class Craft(object):
                 to_install.remove(unit)
 
         return to_install
+
+    def uninstall(self, units):
+        to_uninstall = Set()
+
+        # Ignore units which are not installed.
+        for unit in units:
+            if unit not in self.available:
+                message.simple("'{0}' is not installed. Ignoring...".format(unit))
+                units.remove(unit)
+
+        # Target all units that were installed purely as dependencies
+        # and are no longer needed
+        for unit in units:
+            unit.target_for_uninstallation(to_uninstall, self.available)
+
+        return to_uninstall
 
     def download(self, packages):
         """ Download packages.

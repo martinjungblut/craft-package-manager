@@ -220,10 +220,35 @@ class Package(Unit, Installable, Incompatible):
             return self.data['conflicts']
         return []
 
+    def provides(self):
+        if self.data['provides']:
+            return self.data['provides']
+        return []
+
+    def check_for_conflicts(self, installed, targeted):
+        """ Checks whether the package conflicts with any units
+        that are already installed or targeted for installation.
+
+        Parameters
+            installed
+                Set having all currently installed units on the system.
+            targeted
+                Set having all other units that are already
+                targeted for installation.
+        Raises
+            Conflict
+                if a conflict was found.
+        """
+
+        for conflict in self.conflicts():
+            if installed.target(conflict):
+                raise Conflict
+            elif targeted.target(conflict):
+                raise Conflict
+
     def target_for_installation(self, installed, available, targeted):
         """ Triggered when the package is a target for an
         installation operation.
-        This is a recursive method.
 
         Parameters
             installed
@@ -267,26 +292,39 @@ class Package(Unit, Installable, Incompatible):
 
         return units_found
 
-    def check_for_conflicts(self, installed, targeted):
-        """ Checks whether the package conflicts with any units
-        that are already installed or targeted for installation.
+    def target_for_uninstallation(self, targeted, installed):
+        """ Triggered when the package is a target for an
+        uninstallation operation.
 
         Parameters
-            installed
-                Set having all currently installed units on the system.
             targeted
                 Set having all other units that are already
-                targeted for installation.
-        Raises
-            Conflict
-                if a conflict was found.
+                targeted for uninstallation.
+            installed
+                Set having all currently installed units on the system.
         """
 
-        for conflict in self.conflicts():
-            if installed.target(conflict):
-                raise Conflict
-            elif targeted.target(conflict):
-                raise Conflict
+        dependency_description = '{0}:{1}'.format(self.name, self.architecture)
+        allow_uninstallation = True
+
+        for package in installed.packages():
+            if package not in targeted:
+                if dependency_description in package.dependencies():
+                    print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
+                    allow_uninstallation = False
+                    break
+                for provides in self.provides():
+                    if provides in package.dependencies():
+                        print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
+                        allow_uninstallation = False
+                        break
+
+        if allow_uninstallation:
+            targeted.add(self)
+            for dependency in self.dependencies():
+                unit = installed.target(dependency)
+                if unit and unit not in targeted:
+                    unit.target_for_uninstallation(targeted, installed)
 
 class VirtualPackage(Unit, Installable):
     """ Represents a virtual package. """
@@ -367,6 +405,31 @@ class VirtualPackage(Unit, Installable):
 
         return [package]
 
+    def target_for_uninstallation(self, targeted, installed):
+        """ Triggered when the virtual package is a target for an
+        uninstallation operation.
+
+        Parameters
+            targeted
+                Set having all other units that are already
+                targeted for uninstallation.
+            installed
+                Set having all currently installed units on the system.
+        """
+
+        allow_uninstall = True
+
+        for package in installed.packages():
+            if not package in targeted:
+                if self.name in package.dependencies():
+                    print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
+                    allow_uninstall = False
+                    break
+
+        if allow_uninstall:
+            for provided in self.provided:
+                provided.target_for_uninstallation(targeted, installed)
+
 class Group(Unit, Installable):
     """ Represents a group of packages. """
 
@@ -430,6 +493,21 @@ class Group(Unit, Installable):
                     targeted.add(target)
 
         return self.packages
+
+    def target_for_uninstallation(self, targeted, installed):
+        """ Triggered when the group is a target for an
+        uninstallation operation.
+
+        Parameters
+            targeted
+                Set having all other units that are already
+                targeted for uninstallation.
+            installed
+                Set having all currently installed units on the system.
+        """
+
+        for package in self.packages:
+            package.target_for_uninstallation(targeted, installed)
 
 class Set(set):
     """ Represents a set of units. """
@@ -510,6 +588,30 @@ class Set(set):
                     return unit
 
         return False
+
+    def packages(self):
+        """ Returns an iterable having all packages contained
+        in the Set. """
+
+        for unit in self:
+            if isinstance(unit, Package):
+                yield unit
+
+    def virtual_packages(self):
+        """ Returns an iterable having all virtual packages contained
+        in the Set. """
+
+        for unit in self:
+            if isinstance(unit, VirtualPackage):
+                yield unit
+
+    def groups(self):
+        """ Returns an iterable having all groups contained
+        in the Set. """
+
+        for unit in self:
+            if isinstance(unit, Group):
+                yield unit
 
 class Configuration(object):
     """ Represents a Craft configuration. """
