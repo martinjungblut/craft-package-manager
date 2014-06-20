@@ -292,14 +292,21 @@ class Package(Unit, Installable, Incompatible):
 
         return units_found
 
-    def target_for_uninstallation(self, targeted, installed):
+    def target_for_uninstallation(self, units, truly_targeted, already_targeted, installed):
         """ Triggered when the package is a target for an
         uninstallation operation.
 
         Parameters
-            targeted
-                Set having all other units that are already
-                targeted for uninstallation.
+            units
+                a Set having all units targeted by the user for uninstallation.
+            truly_targeted
+                Set having all units that may actually be uninstalled without
+                harming the system's consistency.
+            already_targeted
+                Set having all units that were already targeted for
+                uninstallation. They may or may not be in truly_targeted,
+                depending on whether they were allowed to be
+                uninstalled or not.
             installed
                 Set having all currently installed units on the system.
         """
@@ -307,24 +314,28 @@ class Package(Unit, Installable, Incompatible):
         dependency_description = '{0}:{1}'.format(self.name, self.architecture)
         allow_uninstallation = True
 
-        for package in installed.packages():
-            if package not in targeted:
+        if self not in already_targeted:
+            already_targeted.add(self)
+
+            for package in installed.packages():
                 if dependency_description in package.dependencies():
-                    print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
-                    allow_uninstallation = False
-                    break
-                for provides in self.provides():
-                    if provides in package.dependencies():
+                    if package not in units:
                         print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
                         allow_uninstallation = False
                         break
+                for provides in self.provides():
+                    if provides in package.dependencies():
+                        if package not in units:
+                            print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
+                            allow_uninstallation = False
+                            break
 
-        if allow_uninstallation:
-            targeted.add(self)
-            for dependency in self.dependencies():
-                unit = installed.target(dependency)
-                if unit and unit not in targeted:
-                    unit.target_for_uninstallation(targeted, installed)
+            if allow_uninstallation:
+                truly_targeted.add(self)
+                for dependency in self.dependencies():
+                    unit = installed.target(dependency)
+                    if unit and unit not in already_targeted:
+                        unit.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
 class VirtualPackage(Unit, Installable):
     """ Represents a virtual package. """
@@ -405,14 +416,21 @@ class VirtualPackage(Unit, Installable):
 
         return [package]
 
-    def target_for_uninstallation(self, targeted, installed):
+    def target_for_uninstallation(self, units, truly_targeted, already_targeted, installed):
         """ Triggered when the virtual package is a target for an
         uninstallation operation.
 
         Parameters
-            targeted
-                Set having all other units that are already
-                targeted for uninstallation.
+            units
+                a Set having all units targeted by the user for uninstallation.
+            truly_targeted
+                Set having all units that may actually be uninstalled without
+                harming the system's consistency.
+            already_targeted
+                Set having all units that were already targeted for
+                uninstallation. They may or may not be in truly_targeted,
+                depending on whether they were allowed to be
+                uninstalled or not.
             installed
                 Set having all currently installed units on the system.
         """
@@ -420,7 +438,7 @@ class VirtualPackage(Unit, Installable):
         allow_uninstall = True
 
         for package in installed.packages():
-            if not package in targeted:
+            if not package in already_targeted and package not in units:
                 if self.name in package.dependencies():
                     print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
                     allow_uninstall = False
@@ -428,7 +446,7 @@ class VirtualPackage(Unit, Installable):
 
         if allow_uninstall:
             for provided in self.provided:
-                provided.target_for_uninstallation(targeted, installed)
+                provided.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
 class Group(Unit, Installable):
     """ Represents a group of packages. """
@@ -494,20 +512,30 @@ class Group(Unit, Installable):
 
         return self.packages
 
-    def target_for_uninstallation(self, targeted, installed):
+    def target_for_uninstallation(self, units, truly_targeted, already_targeted, installed):
         """ Triggered when the group is a target for an
         uninstallation operation.
 
         Parameters
-            targeted
-                Set having all other units that are already
-                targeted for uninstallation.
+            units
+                a Set having all units targeted by the user for uninstallation.
+            truly_targeted
+                Set having all units that may actually be uninstalled without
+                harming the system's consistency.
+            already_targeted
+                Set having all units that were already targeted for
+                uninstallation. They may or may not be in truly_targeted,
+                depending on whether they were allowed to be
+                uninstalled or not.
             installed
                 Set having all currently installed units on the system.
         """
 
         for package in self.packages:
-            package.target_for_uninstallation(targeted, installed)
+            units.add(package)
+
+        for package in self.packages:
+            package.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
 class Set(set):
     """ Represents a set of units. """

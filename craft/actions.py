@@ -308,20 +308,22 @@ class Craft(object):
         return to_install
 
     def uninstall(self, units):
-        to_uninstall = Set()
+        really_targeted = Set()
+        already_targeted = Set()
+        units = Set(units)
 
         # Ignore units which are not installed.
         for unit in units:
-            if unit not in self.available:
+            if unit not in self.installed:
                 message.simple("'{0}' is not installed. Ignoring...".format(unit))
                 units.remove(unit)
 
         # Target all units that were installed purely as dependencies
         # and are no longer needed
         for unit in units:
-            unit.target_for_uninstallation(to_uninstall, self.available)
+            unit.target_for_uninstallation(units, really_targeted, already_targeted, self.installed)
 
-        return to_uninstall
+        return really_targeted
 
     def download(self, packages):
         """ Download packages.
