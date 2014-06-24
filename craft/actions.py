@@ -239,7 +239,7 @@ class Craft(object):
         return True
 
     def install(self, units):
-        """ Installs a collection of units.
+        """ Returns a collection of units allowed to be installed.
         Resolves dependencies, handles conflicts and checks
         for disabled CPU architectures.
 
@@ -260,70 +260,71 @@ class Craft(object):
                 having all Package units to be installed.
         """
 
-        to_install = Set()
+        truly_targeted = Set()
+        already_targeted = Set()
+        units = Set(units)
 
         # Remove all already installed units from the list
-        for unit in to_install:
+        for unit in units:
             if unit in self.installed:
                 message.simple("'{0}' is already installed. Ignoring...".format(unit))
-                to_install.remove(unit)
+                units.remove(unit)
 
         # Dependency resolution
-        for unit in units:
-            if isinstance(unit, Package):
-                unit.add_temporary_flag('installed-by-user')
-            to_install.add(unit)
+        for unit in list(units):
             try:
-                unit.target_for_installation(self.installed, self.available, to_install)
+                unit.target_for_installation(self.installed, self.available, units, truly_targeted, already_targeted)
             except BrokenDependency:
                 raise
 
         # Remove all already installed units from the list a second time
-        for unit in to_install:
+        for unit in truly_targeted:
             if unit in self.installed:
                 message.simple("'{0}' is already installed. Ignoring...".format(unit))
-                to_install.remove(unit)
+                truly_targeted.remove(unit)
 
         # Check if any of the units is not allowed due to one their CPU
         # architectures not being enabled
-        for unit in to_install:
+        for unit in truly_targeted:
             if not self.configuration.is_unit_allowed(unit):
                 message.simple("'{0}' is not allowed to be installed since its architecture is not currently enabled.".format(unit))
                 raise UnitNotAllowed
 
         # Check for conflicts
-        for unit in to_install:
+        for unit in truly_targeted:
             if isinstance(unit, Incompatible):
                 try:
-                    unit.check_for_conflicts(self.installed, to_install)
+                    unit.check_for_conflicts(self.installed, truly_targeted)
                 except Conflict:
                     raise
 
-        # Remove Groups and VirtualPackages
-        to_install = list(to_install)
-        for unit in to_install:
-            if isinstance(unit, (Group, VirtualPackage)):
-                to_install.remove(unit)
-
-        return to_install
+        return truly_targeted
 
     def uninstall(self, units):
-        really_targeted = Set()
+        """ Returns a collection of units allowed to be uninstalled.
+
+        Parameters
+            units
+                iterable having all units to be uninstalled.
+        Returns
+            list
+                having all Package units to be uninstalled.
+        """
+
+        truly_targeted = Set()
         already_targeted = Set()
         units = Set(units)
 
-        # Ignore units which are not installed.
+        # Ignore units which are not available.
         for unit in units:
-            if unit not in self.installed:
-                message.simple("'{0}' is not installed. Ignoring...".format(unit))
+            if unit not in self.available:
+                message.simple("'{0}' is not available. Ignoring...".format(unit))
                 units.remove(unit)
 
-        # Target all units that were installed purely as dependencies
-        # and are no longer needed
-        for unit in units:
-            unit.target_for_uninstallation(units, really_targeted, already_targeted, self.installed)
+        for unit in list(units):
+            unit.target_for_uninstallation(units, truly_targeted, already_targeted, self.available)
 
-        return really_targeted
+        return truly_targeted
 
     def download(self, packages):
         """ Download packages.

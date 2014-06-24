@@ -225,14 +225,14 @@ class Package(Unit, Installable, Incompatible):
             return self.data['provides']
         return []
 
-    def check_for_conflicts(self, installed, targeted):
+    def check_for_conflicts(self, installed, truly_targeted):
         """ Checks whether the package conflicts with any units
-        that are already installed or targeted for installation.
+        that are already installed or truly_targeted for installation.
 
         Parameters
             installed
                 Set having all currently installed units on the system.
-            targeted
+            truly_targeted
                 Set having all other units that are already
                 targeted for installation.
         Raises
@@ -243,10 +243,10 @@ class Package(Unit, Installable, Incompatible):
         for conflict in self.conflicts():
             if installed.target(conflict):
                 raise Conflict
-            elif targeted.target(conflict):
+            elif truly_targeted.target(conflict):
                 raise Conflict
 
-    def target_for_installation(self, installed, available, targeted):
+    def target_for_installation(self, installed, available, units, truly_targeted, already_targeted):
         """ Triggered when the package is a target for an
         installation operation.
 
@@ -255,42 +255,52 @@ class Package(Unit, Installable, Incompatible):
                 Set having all currently installed units on the system.
             available
                 Set having all currently available units on the system.
-            targeted
+            units
+                a Set having all units targeted by the user for installation.
+            truly_targeted
                 Set having all other units that are already
-                targeted for installation.
+                truly_targeted for installation.
+            already_targeted
+                Set having all units that were already targeted for
+                installation. They may or may not be in truly_targeted,
+                depending on whether they were allowed to be
+                installed or not.
         Raises
             BrokenDependency
                 if a dependency could not be satisfied.
-        Returns
-            list
-                having all units that were targeted
-                for installation in order for the package to be successfully
-                installed. This list includes the package's dependencies.
         """
 
-        units_found = []
+        if self not in already_targeted:
 
-        for dependency in self.dependencies():
-            if not targeted.target(dependency):
-                if not installed.target(dependency):
-                    unit = available.target(dependency)
-                    if unit:
-                        if isinstance(unit, Package):
-                            unit.add_temporary_flag('installed-as-dependency')
-                        units_found.append(unit)
-                    else:
-                        raise BrokenDependency
+            if self in units:
+                self.add_temporary_flag('installed-by-user')
+            else:
+                virtuals = self.provides()
+                if virtuals:
+                    for virtual in virtuals:
+                        if units.target(virtual):
+                            self.add_temporary_flag('installed-by-user')
+                            break
+                        else:
+                            self.add_temporary_flag('installed-as-dependency')
+                            break
+                else:
+                    self.add_temporary_flag('installed-as-dependency')
 
-        for unit in units_found:
-            targeted.add(unit)
+            truly_targeted.add(self)
+            already_targeted.add(self)
 
-        for unit in units_found:
-            targets = unit.target_for_installation(installed, available, targeted)
-            if targets:
-                for target in targets:
-                    targeted.add(target)
-
-        return units_found
+            for dependency in self.dependencies():
+                if not already_targeted.target(dependency):
+                    if not installed.target(dependency):
+                        unit = available.target(dependency)
+                        if unit:
+                            try:
+                                unit.target_for_installation(installed, available, units, truly_targeted, already_targeted)
+                            except BrokenDependency:
+                                raise
+                        else:
+                            raise BrokenDependency
 
     def target_for_uninstallation(self, units, truly_targeted, already_targeted, installed):
         """ Triggered when the package is a target for an
@@ -311,21 +321,20 @@ class Package(Unit, Installable, Incompatible):
                 Set having all currently installed units on the system.
         """
 
-        dependency_description = '{0}:{1}'.format(self.name, self.architecture)
-        allow_uninstallation = True
-
         if self not in already_targeted:
             already_targeted.add(self)
+            dependency_description = '{0}:{1}'.format(self.name, self.architecture)
+            allow_uninstallation = True
 
             for package in installed.packages():
                 if dependency_description in package.dependencies():
-                    if package not in units:
+                    if package not in units and package not in already_targeted:
                         print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
                         allow_uninstallation = False
                         break
                 for provides in self.provides():
                     if provides in package.dependencies():
-                        if package not in units:
+                        if package not in units and package not in already_targeted:
                             print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
                             allow_uninstallation = False
                             break
@@ -358,7 +367,7 @@ class VirtualPackage(Unit, Installable):
     def provided_by(self, package):
         self.provided.append(package)
 
-    def target_for_installation(self, installed, available, targeted):
+    def target_for_installation(self, installed, available, units, truly_targeted, already_targeted):
         """ Triggered when the virtual package is a target for an
         installation operation.
 
@@ -367,54 +376,52 @@ class VirtualPackage(Unit, Installable):
                 Set having all currently installed units on the system.
             available
                 Set having all currently available units on the system.
-            targeted
+            units
+                a Set having all units targeted by the user for installation.
+            truly_targeted
                 Set having all other units that are already
-                targeted for installation.
-        Returns
-            list
-                having all units that were targeted
-                for installation in order for the virtual package to be
-                successfully installed.
+                truly_targeted for installation.
+            already_targeted
+                Set having all units that were already targeted for
+                installation. They may or may not be in truly_targeted,
+                depending on whether they were allowed to be
+                installed or not.
         """
 
-        organised = {}
-        counter = 0
-        valid_choice = False
+        if self not in already_targeted:
 
-        for package in self.provided:
-            organised[counter] = package
-            counter = counter+1
+            organised = {}
+            counter = 0
+            valid_choice = False
 
-        while not valid_choice:
-            print("Please choose a package for providing '{0}'.".format(self))
-            for each in organised.iterkeys():
-                print("{0} - {1}".format(each, organised[each]))
+            for package in self.provided:
+                organised[counter] = package
+                counter = counter+1
 
-            choice = raw_input()
+            while not valid_choice:
+                print("Please choose a package for providing '{0}'.".format(self))
+                for each in organised.iterkeys():
+                    print("{0} - {1}".format(each, organised[each]))
 
-            try:
-                choice = int(choice)
-            except ValueError:
-                print("The specified value is invalid. Please try again.")
-            else:
-                if not -1 < choice < len(organised):
+                choice = raw_input()
+
+                try:
+                    choice = int(choice)
+                except ValueError:
                     print("The specified value is invalid. Please try again.")
                 else:
-                    valid_choice = True
+                    if not -1 < choice < len(organised):
+                        print("The specified value is invalid. Please try again.")
+                    else:
+                        valid_choice = True
 
-        package = organised[choice]
-        print("Your choice was: '{0}'".format(package))
+            package = organised[choice]
+            print("Your choice was: '{0}'".format(package))
 
-        targeted.add(self)
-        package.add_temporary_flag('installed-by-user')
-        targeted.add(package)
+            already_targeted.add(self)
+            truly_targeted.add(package)
 
-        targets = package.target_for_installation(installed, available, targeted)
-        if targets:
-            for target in targets:
-                targeted.add(target)
-
-        return [package]
+            package.target_for_installation(installed, available, units, truly_targeted, already_targeted)
 
     def target_for_uninstallation(self, units, truly_targeted, already_targeted, installed):
         """ Triggered when the virtual package is a target for an
@@ -435,18 +442,20 @@ class VirtualPackage(Unit, Installable):
                 Set having all currently installed units on the system.
         """
 
-        allow_uninstall = True
+        if self not in already_targeted:
+            already_targeted.add(self)
+            allow_uninstall = True
 
-        for package in installed.packages():
-            if not package in already_targeted and package not in units:
-                if self.name in package.dependencies():
-                    print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
-                    allow_uninstall = False
-                    break
+            for package in installed.packages():
+                if package not in already_targeted and package not in units:
+                    if self.name in package.dependencies():
+                        print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
+                        allow_uninstall = False
+                        break
 
-        if allow_uninstall:
-            for provided in self.provided:
-                provided.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
+            if allow_uninstall:
+                for provided in self.provided:
+                    provided.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
 class Group(Unit, Installable):
     """ Represents a group of packages. """
@@ -483,7 +492,7 @@ class Group(Unit, Installable):
 
         self.packages.append(package)
 
-    def target_for_installation(self, installed, available, targeted):
+    def target_for_installation(self, installed, available, units, truly_targeted, already_targeted):
         """ Triggered when the group is a target for an
         installation operation.
 
@@ -492,25 +501,26 @@ class Group(Unit, Installable):
                 Set having all currently installed units on the system.
             available
                 Set having all currently available units on the system.
-            targeted
+            units
+                a Set having all units targeted by the user for installation.
+            truly_targeted
                 Set having all other units that are already
-                targeted for installation.
-        Returns
-            list
-                having all units that were targeted
-                for installation in order for the group to be
-                successfully installed.
+                truly_targeted for installation.
+            already_targeted
+                Set having all units that were already targeted for
+                installation. They may or may not be in truly_targeted,
+                depending on whether they were allowed to be
+                installed or not.
         """
 
-        for package in self.packages:
-            package.add_temporary_flag('installed-by-user')
-            targeted.add(package)
-            targets = package.target_for_installation(installed, available, targeted)
-            if targets:
-                for target in targets:
-                    targeted.add(target)
+        if self not in already_targeted:
+            already_targeted.add(self)
 
-        return self.packages
+            for package in self.packages:
+                units.add(package)
+
+            for package in self.packages:
+                package.target_for_installation(installed, available, units, truly_targeted, already_targeted)
 
     def target_for_uninstallation(self, units, truly_targeted, already_targeted, installed):
         """ Triggered when the group is a target for an
@@ -531,11 +541,14 @@ class Group(Unit, Installable):
                 Set having all currently installed units on the system.
         """
 
-        for package in self.packages:
-            units.add(package)
+        if self not in already_targeted:
+            already_targeted.add(self)
 
-        for package in self.packages:
-            package.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
+            for package in self.packages:
+                units.add(package)
+
+            for package in self.packages:
+                package.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
 class Set(set):
     """ Represents a set of units. """
