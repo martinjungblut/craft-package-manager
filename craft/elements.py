@@ -75,7 +75,7 @@ class Incompatible(object):
     def check_for_conflicts(self, installed, targeted):
         raise NotImplementedError
 
-class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
+class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
     """ Represents a remotely available package. """
 
     def __init__(self, name, version, architecture, repository, data):
@@ -396,7 +396,7 @@ class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
                     if unit not in already_targeted:
                         already_targeted.add(unit)
 
-class VirtualPackage(Unit, Installable, Uninstallable):
+class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable):
     """ Represents a virtual package. """
 
     def __init__(self, name):

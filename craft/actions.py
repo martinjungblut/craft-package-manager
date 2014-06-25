@@ -317,10 +317,10 @@ class Craft(object):
         already_targeted = Set()
         units = Set(units)
 
-        # Ignore units which are not available.
+        # Ignore units which are not installed
         for unit in units:
-            if unit not in self.available:
-                message.simple("'{0}' is not available. Ignoring...".format(unit))
+            if unit not in self.installed:
+                message.simple("'{0}' is not installed. Ignoring...".format(unit))
                 units.remove(unit)
 
         for unit in list(units):
@@ -338,7 +338,7 @@ class Craft(object):
         available = self.available
         installed = Set([self.available.target('util-linux:any 2.24.1-1'), self.available.target('glibc:any'), self.available.target('filesystem:any')])
 
-        # Ignore units that are not installed
+        # Ignore units which are not installed
         #for unit in list(units):
             #if unit not in self.installed:
                 #message.simple("'{0}' is not installed and therefore cannot be upgraded. Ignoring...".format(unit))
