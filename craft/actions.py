@@ -328,16 +328,15 @@ class Craft(object):
 
         return truly_targeted
 
-    def upgrade(self, units=False):
+    def upgrade(self, units):
+        to_install_new = Set()
         to_install = Set()
         to_uninstall = Set()
         already_targeted = Set()
-        available = self.available
+        units = Set(units)
 
-        if not units:
-            units = Set(self.available)
-        else:
-            units = Set(units)
+        available = self.available
+        installed = Set([self.available.target('util-linux:any 2.24.1-1'), self.available.target('glibc:any'), self.available.target('filesystem:any')])
 
         # Ignore units that are not installed
         #for unit in list(units):
@@ -347,9 +346,17 @@ class Craft(object):
 
         for unit in units:
             if isinstance(unit, Upgradeable):
-                unit.target_for_upgrade(to_install, to_uninstall, already_targeted, available)
+                unit.target_for_upgrade(to_install_new, to_install, to_uninstall, already_targeted, available, installed)
             else:
                 message.simple("'{0}' is not upgradeable. Ignoring...")
+
+        #print("To install")
+        #for unit in to_install:
+            #print(unit)
+
+        #print("To uninstall")
+        #for unit in to_uninstall:
+            #print(unit)
 
         return [to_install, to_uninstall]
 
@@ -546,3 +553,7 @@ class Craft(object):
 
         self.available = load.available(self.configuration)
         return True
+
+#craft = Craft('config.yml')
+#craft.sync()
+#craft.upgrade([ craft.available.target('util-linux:any 2.24.1-1') ])

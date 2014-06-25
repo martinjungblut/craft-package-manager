@@ -231,14 +231,14 @@ class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
             return self.data['replaces']
         return []
 
-    def check_for_conflicts(self, installed, truly_targeted):
+    def check_for_conflicts(self, installed, targeted):
         """ Checks whether the package conflicts with any units
-        that are already installed or truly_targeted for installation.
+        that are already installed or targeted for installation.
 
         Parameters
             installed
                 Set having all currently installed units on the system.
-            truly_targeted
+            targeted
                 Set having all other units that are already
                 targeted for installation.
         Raises
@@ -249,7 +249,7 @@ class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
         for conflict in self.conflicts():
             if installed.target(conflict):
                 raise Conflict
-            elif truly_targeted.target(conflict):
+            elif targeted.target(conflict):
                 raise Conflict
 
     def target_for_installation(self, installed, available, units, truly_targeted, already_targeted):
@@ -352,7 +352,7 @@ class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
                     if unit and unit not in already_targeted:
                         unit.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
-    def target_for_upgrade(self, to_install, to_uninstall, already_targeted, available, installed):
+    def target_for_upgrade(self, to_install_new, to_install, to_uninstall, already_targeted, available, installed):
 
         if self not in already_targeted:
             already_targeted.add(self)
@@ -362,14 +362,19 @@ class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
                 for replacements in package.replaces():
                     unit = installed.target(replacements)
                     if unit and unit == self:
-                        substitute = unit
+                        substitute = package
                         break
-                if not substitute:
-                    if package.name == self.name:
-                        if package.architecture == self.architecture:
-                            if dsl.version.compare(package.version, self.version) == 1:
-                                substitute = package
-                                break
+                if substitute:
+                    break
+
+            for package in available.packages():
+                if substitute:
+                    break
+                elif package.name == self.name:
+                    if package.architecture == self.architecture:
+                        if dsl.version.compare(package.version, self.version) == 1:
+                            substitute = package
+                            break
 
             if substitute:
                 to_uninstall.add(self)
@@ -378,8 +383,11 @@ class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
                 for dependency in substitute.dependencies():
                     unit = available.target(dependency)
                     if unit:
-                        if isinstance(unit, Upgradeable):
-                            unit.target_for_upgrade(to_install, to_uninstall, already_targeted, available)
+                        if unit in installed:
+                            if isinstance(unit, Upgradeable):
+                                unit.target_for_upgrade(to_install_new, to_install, to_uninstall, already_targeted, available, installed)
+                        else:
+                            to_install_new.add(unit)
                     else:
                         raise BrokenDependency
 
@@ -498,6 +506,14 @@ class VirtualPackage(Unit, Installable, Uninstallable):
             if allow_uninstall:
                 for provided in self.provided:
                     provided.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
+
+    def target_for_upgrade(self, to_install_new, to_install, to_uninstall, already_targeted, available, installed):
+
+        if self not in already_targeted:
+            already_targeted.add(self)
+
+            for provided in self.provided:
+                provided.target_for_upgrade(to_install_new, to_install, to_uninstall, already_targeted, available, installed)
 
 class Group(Unit, Installable, Uninstallable):
     """ Represents a group of packages. """
@@ -663,10 +679,14 @@ class Set(set):
             for unit in self:
                 if isinstance(unit, Package):
                     try:
-                        if parsed[0] == unit.name and parsed[1] == unit.architecture:
+                        if parsed[0] == unit.name and parsed[1] == unit.architecture and parsed[2] == unit.version:
                             return unit
                     except IndexError:
-                        pass
+                        try:
+                            if parsed[0] == unit.name and parsed[1] == unit.architecture:
+                                return unit
+                        except IndexError:
+                            pass
                 elif parsed[0] == unit.name:
                     return unit
 

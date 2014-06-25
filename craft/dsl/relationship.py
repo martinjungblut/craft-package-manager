@@ -27,7 +27,7 @@ def parse(target):
         False
     """
 
-    matches = re.findall('(?=[a-z0-9\-\.]+)(:{0,1}[a-z0-9\-\.]+)?', target)
+    matches = re.findall('([a-z0-9\-\.]+)+', target)
 
     if matches:
         return matches
