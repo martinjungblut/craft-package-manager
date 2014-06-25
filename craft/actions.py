@@ -7,7 +7,9 @@ from os.path import isfile, isdir
 from shutil import rmtree
 
 # Craft imports
-from elements import Set, Incompatible, BrokenDependency, Conflict, Package, Group, VirtualPackage
+from elements import BrokenDependency, Conflict
+from elements import Incompatible, Installable, Uninstallable, Upgradeable, Downgradeable
+from elements import Set, Package, VirtualPackage, Group
 import archive
 import checksum
 import dump
@@ -325,6 +327,31 @@ class Craft(object):
             unit.target_for_uninstallation(units, truly_targeted, already_targeted, self.available)
 
         return truly_targeted
+
+    def upgrade(self, units=False):
+        to_install = Set()
+        to_uninstall = Set()
+        already_targeted = Set()
+        available = self.available
+
+        if not units:
+            units = Set(self.available)
+        else:
+            units = Set(units)
+
+        # Ignore units that are not installed
+        #for unit in list(units):
+            #if unit not in self.installed:
+                #message.simple("'{0}' is not installed and therefore cannot be upgraded. Ignoring...".format(unit))
+                #units.remove(unit)
+
+        for unit in units:
+            if isinstance(unit, Upgradeable):
+                unit.target_for_upgrade(to_install, to_uninstall, already_targeted, available)
+            else:
+                message.simple("'{0}' is not upgradeable. Ignoring...")
+
+        return [to_install, to_uninstall]
 
     def download(self, packages):
         """ Download packages.

@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 
 # Craft imports
 import dsl.relationship
+import dsl.version
 
 # Exceptions
 class BrokenDependency(Exception):
@@ -74,7 +75,7 @@ class Incompatible(object):
     def check_for_conflicts(self, installed, targeted):
         raise NotImplementedError
 
-class Package(Unit, Installable, Incompatible):
+class Package(Unit, Installable, Uninstallable, Upgradeable, Incompatible):
     """ Represents a remotely available package. """
 
     def __init__(self, name, version, architecture, repository, data):
@@ -225,6 +226,11 @@ class Package(Unit, Installable, Incompatible):
             return self.data['provides']
         return []
 
+    def replaces(self):
+        if self.data['replaces']:
+            return self.data['replaces']
+        return []
+
     def check_for_conflicts(self, installed, truly_targeted):
         """ Checks whether the package conflicts with any units
         that are already installed or truly_targeted for installation.
@@ -346,7 +352,43 @@ class Package(Unit, Installable, Incompatible):
                     if unit and unit not in already_targeted:
                         unit.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
-class VirtualPackage(Unit, Installable):
+    def target_for_upgrade(self, to_install, to_uninstall, already_targeted, available, installed):
+
+        if self not in already_targeted:
+            already_targeted.add(self)
+            substitute = False
+
+            for package in available.packages():
+                for replacements in package.replaces():
+                    unit = installed.target(replacements)
+                    if unit and unit == self:
+                        substitute = unit
+                        break
+                if not substitute:
+                    if package.name == self.name:
+                        if package.architecture == self.architecture:
+                            if dsl.version.compare(package.version, self.version) == 1:
+                                substitute = package
+                                break
+
+            if substitute:
+                to_uninstall.add(self)
+                to_install.add(substitute)
+
+                for dependency in substitute.dependencies():
+                    unit = available.target(dependency)
+                    if unit:
+                        if isinstance(unit, Upgradeable):
+                            unit.target_for_upgrade(to_install, to_uninstall, already_targeted, available)
+                    else:
+                        raise BrokenDependency
+
+                for virtual in substitute.provides():
+                    unit = available.target(virtual)
+                    if unit not in already_targeted:
+                        already_targeted.add(unit)
+
+class VirtualPackage(Unit, Installable, Uninstallable):
     """ Represents a virtual package. """
 
     def __init__(self, name):
@@ -457,7 +499,7 @@ class VirtualPackage(Unit, Installable):
                 for provided in self.provided:
                     provided.target_for_uninstallation(units, truly_targeted, already_targeted, installed)
 
-class Group(Unit, Installable):
+class Group(Unit, Installable, Uninstallable):
     """ Represents a group of packages. """
 
     def __init__(self, name):
