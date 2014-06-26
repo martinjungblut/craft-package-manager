@@ -18,15 +18,55 @@ import message
 
 class InstallError(Exception):
     """ Raised if an error occurs during a package's installation phase. """
-    pass
+
+    def __init__(self, package):
+        """ Constructor.
+
+        Parameters
+            package
+                the Package unit that failed to be installed.
+        """
+
+        self.package = package
 
 class UninstallError(Exception):
     """ Raised if an error occurs during a package's uninstallation phase. """
-    pass
+
+    def __init__(self, package):
+        """ Constructor.
+
+        Parameters
+            package
+                the Package unit that failed to be uninstalled.
+        """
+
+        self.package = package
+
+class RepositoryError(Exception):
+    """ Raised if an invalid repository is specified. """
+
+    def __init__(self, name):
+        """ Constructor.
+
+        Parameters
+            name
+                the repository's name.
+        """
+
+        self.name = name
 
 class DownloadError(Exception):
     """ Raised if an error occurs during a package's download phase. """
-    pass
+
+    def __init__(self, package):
+        """ Constructor.
+
+        Parameters
+            package
+                the Package unit that failed to be downloaded.
+        """
+
+        self.package = package
 
 class ClearError(Exception):
     """ Raised if an error occurs during the clear operation's execution. """
@@ -36,10 +76,19 @@ class SyncError(Exception):
     """ Raised if an error occurs during the synchronisation's operation execution. """
     pass
 
-class UnitNotAllowed(Exception):
-    """ Raised if a given unit is not allowed to be installed due to its CPU
+class PackageNotAllowed(Exception):
+    """ Raised if a given package is not allowed to be installed due to its CPU
     architecture being disabled. """
-    pass
+
+    def __init__(self, package):
+        """ Constructor.
+
+        Parameters
+            package
+                the Package unit that is not allowed to be installed.
+        """
+
+        self.package = package
 
 def _install(configuration, installed, package, filepath):
     """ Performs a low-level package installation.
@@ -84,25 +133,25 @@ def _install(configuration, installed, package, filepath):
 
     if package in installed:
         message.warning("'{0}' is already installed. Aborting...".format(package))
-        raise InstallError
+        raise InstallError(package)
 
     try:
         mkdir(package_directory)
     except OSError:
         message.warning("failed to create internal directory while installing '{0}'. Aborting...".format(package))
-        raise InstallError
+        raise InstallError(package)
 
     try:
         chdir(package_directory)
     except OSError:
         message.warning("could not access the directory belonging to package '{0}'. Aborting...".format(package))
-        raise InstallError
+        raise InstallError(package)
 
     sha1 = package.has_checksum('sha1')
     if sha1:
         if not filepath:
             message.warning("missing archive filepath for package '{0}'. Aborting...".format(package))
-            raise InstallError
+            raise InstallError(package)
 
         if not checksum.sha1(filepath, sha1):
             message.warning("inconsistent archive provided for package '{0}'. Aborting...".format(package))
@@ -110,7 +159,7 @@ def _install(configuration, installed, package, filepath):
                 rmtree(package_directory)
             except OSError:
                 raise
-            raise InstallError
+            raise InstallError(package)
 
         package_files = archive.getfiles(filepath)
         if not package_files:
@@ -119,7 +168,7 @@ def _install(configuration, installed, package, filepath):
                 rmtree(package_directory)
             except OSError:
                 raise
-            raise InstallError
+            raise InstallError(package)
 
         try:
             package_files_dump_handle = open('files', 'w')
@@ -129,7 +178,7 @@ def _install(configuration, installed, package, filepath):
                 rmtree(package_directory)
             except OSError:
                 raise
-            raise InstallError
+            raise InstallError(package)
         else:
             for each in package_files:
                 package_files_dump_handle.write(each+'\n')
@@ -141,12 +190,12 @@ def _install(configuration, installed, package, filepath):
                 rmtree(package_directory)
             except OSError:
                 raise
-            raise InstallError
+            raise InstallError(package)
 
     try:
         if not dump.package(package, 'metadata.yml'):
             message.warning("failed to write metadata.yml for package '{0}'. Aborting...".format(package))
-            raise InstallError
+            raise InstallError(package)
     except IOError:
         raise
 
@@ -182,13 +231,13 @@ def _uninstall(configuration, installed, package, keep_static):
 
     if package not in installed:
         message.warning("'{0}' is not installed. Aborting...".format(package))
-        raise UninstallError
+        raise UninstallError(package)
 
     try:
         chdir(db+'installed/'+name+'/'+version+'/'+architecture)
     except OSError:
         message.warning("could not access the directory belonging to package '{0}'.".format(package))
-        raise UninstallError
+        raise UninstallError(package)
 
     package_files = []
     try:
@@ -208,13 +257,13 @@ def _uninstall(configuration, installed, package, keep_static):
     for each in package_files:
         if not access(root+each, W_OK):
             message.warning("cannot remove file '{0}' from package '{1}'.".format(root+each, package))
-            raise UninstallError
+            raise UninstallError(package)
 
     for each in craft_files:
         if isfile(each) or isdir(each):
             if not access(each, W_OK):
                 message.warning("cannot remove file '{0}'.".format(each))
-                raise UninstallError
+                raise UninstallError(package)
 
     if keep_static:
         for each in package.static():
@@ -277,7 +326,7 @@ def install(configuration, installed, available, attempt_install):
             if a dependency could not be resolved.
         Conflict
             if a conflict was found between two units.
-        UnitNotAllowed
+        PackageNotAllowed
             if at least one of the units targeted for installation
             is not able to be installed due to its CPU architecture
             being disabled.
@@ -317,7 +366,7 @@ def install(configuration, installed, available, attempt_install):
     for unit in to_install:
         if not configuration.is_unit_allowed(unit):
             message.simple("'{0}' is not allowed to be installed since its architecture is not currently enabled.".format(unit))
-            raise UnitNotAllowed
+            raise PackageNotAllowed
 
     # Check for conflicts
     for unit in to_install:
@@ -415,6 +464,8 @@ def download(configuration, packages):
         packages
             an iterable having the Package units to be downloaded.
     Raises
+        RepositoryError
+            in case an invalid repository was specified.
         DownloadError
             in case of failure.
     Returns
@@ -435,7 +486,7 @@ def download(configuration, packages):
         try:
             repository = configuration.repositories()[repository_name]
         except KeyError:
-            raise DownloadError
+            raise RepositoryError(repository_name) 
 
         try:
             environment.merge(repository['env'])
@@ -468,13 +519,13 @@ def download(configuration, packages):
                 try:
                     chdir(configuration.db()+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
                 except OSError:
-                    raise DownloadError
+                    raise DownloadError(package)
 
                 if not isfile('package.tar.gz'):
                     handler = repository['handler']
                     target = "{0}/{1}/{2}/{3}/package.tar.gz".format(repository['target'], n, v, a)
                     if system(handler+' '+target) != 0:
-                        raise DownloadError
+                        raise DownloadError(package)
 
         try:
             environment.purge(repository['env'].keys())

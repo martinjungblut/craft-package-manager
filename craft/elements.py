@@ -7,14 +7,37 @@ from abc import ABCMeta, abstractmethod
 import dsl.relationship
 import dsl.version
 
-# Exceptions
 class BrokenDependency(Exception):
-    """ Raised if a unit depends on an unavailable unit. """
-    pass
+    """ Raised if a package depends on an unavailable unit. """
+
+    def __init__(self, package, dependency_description):
+        """ Constructor.
+
+        Parameters
+            package
+                the Package object having a broken dependency.
+            dependency_description
+                string describing the broken dependency.
+        """
+
+        self.package = package
+        self.dependency_description = dependency_description
 
 class Conflict(Exception):
     """ Raised if there is a conflict between units. """
-    pass
+
+    def __init(self, first_unit, second_unit):
+        """ Constructor.
+
+        Parameters
+            first_unit
+                the first unit involved in the conflict.
+            second_unit
+                the second unit involved in the conflict.
+        """
+
+        self.first_unit = first_unit
+        self.second_unit = second_unit
 
 class Unit(object):
     """ Base unit. """
@@ -252,10 +275,10 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
         """
 
         for conflict in self.conflicts():
-            if installed.target(conflict):
-                raise Conflict
-            elif targeted.target(conflict):
-                raise Conflict
+            for each_set in [installed, targeted]:
+                unit = each_set.target(conflict)
+                if unit:
+                    raise Conflict(self, unit)
 
     def target_for_installation(self, installed, available, attempt_install, already_targeted, to_install):
         """ Triggered when the package is a target for an
@@ -311,7 +334,7 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                             except BrokenDependency:
                                 raise
                         else:
-                            raise BrokenDependency
+                            raise BrokenDependency(self, dependency)
 
     def target_for_uninstallation(self, installed, attempt_uninstall, already_targeted, to_uninstall):
         """ Triggered when the package is a target for an
@@ -417,7 +440,7 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                         else:
                             to_install_new.add(unit)
                     else:
-                        raise BrokenDependency
+                        raise BrokenDependency(substitute, dependency)
 
                 for virtual in substitute.provides():
                     unit = available.target(virtual)
