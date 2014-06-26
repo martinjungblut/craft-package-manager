@@ -1,4 +1,4 @@
-""" Actions. """
+""" High-level interface to Craft's most common operations. """
 
 # Standard library imports
 from glob import glob
@@ -17,22 +17,28 @@ import environment
 import message
 
 class InstallError(Exception):
+    """ Raised if an error occurs during a package's installation phase. """
     pass
 
 class UninstallError(Exception):
+    """ Raised if an error occurs during a package's uninstallation phase. """
     pass
 
 class DownloadError(Exception):
+    """ Raised if an error occurs during a package's download phase. """
     pass
 
 class ClearError(Exception):
+    """ Raised if an error occurs during the clear operation's execution. """
     pass
 
 class SyncError(Exception):
+    """ Raised if an error occurs during the synchronisation's operation execution. """
     pass
 
 class UnitNotAllowed(Exception):
-    """ Raised if a given unit is not allowed to be installed. """
+    """ Raised if a given unit is not allowed to be installed due to its CPU
+    architecture being disabled. """
     pass
 
 def _install(configuration, installed, package, filepath):
@@ -59,78 +65,87 @@ def _install(configuration, installed, package, filepath):
             if the installation was successfully completed.
     """
 
-    db = configuration.db()
     architecture = package.architecture
     name = package.name
     version = package.version
-
-    required = [
+    db = configuration.db()
+    package_directory = db+'installed/'+name+'/'+version+'/'+architecture
+    craft_directories = [
         db+'installed/',
         db+'installed/'+name,
         db+'installed/'+name+'/'+version
     ]
-    for each in required:
+
+    for each in craft_directories:
         try:
             mkdir(each)
         except OSError:
             pass
 
     if package in installed:
-        message.warning("'{0}' is already installed.".format(package))
+        message.warning("'{0}' is already installed. Aborting...".format(package))
         raise InstallError
-    else:
-        try:
-            mkdir(db+'installed/'+name+'/'+version+'/'+architecture)
-        except OSError:
-            message.warning("failed to create internal directory while installing '{0}'.".format(package))
-            raise InstallError
 
     try:
-        chdir(db+'installed/'+name+'/'+version+'/'+architecture)
+        mkdir(package_directory)
     except OSError:
-        message.warning("could not access the directory belonging to package '{0}'.".format(package))
+        message.warning("failed to create internal directory while installing '{0}'. Aborting...".format(package))
+        raise InstallError
+
+    try:
+        chdir(package_directory)
+    except OSError:
+        message.warning("could not access the directory belonging to package '{0}'. Aborting...".format(package))
         raise InstallError
 
     sha1 = package.has_checksum('sha1')
     if sha1:
         if not filepath:
-            message.warning("missing archive filepath for non-metapackage '{0}'.".format(package))
+            message.warning("missing archive filepath for package '{0}'. Aborting...".format(package))
             raise InstallError
 
         if not checksum.sha1(filepath, sha1):
-            message.warning("inconsistent archive for package '{0}'.".format(package))
+            message.warning("inconsistent archive provided for package '{0}'. Aborting...".format(package))
             try:
-                rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
+                rmtree(package_directory)
             except OSError:
                 raise
             raise InstallError
 
-        files = archive.getfiles(filepath)
-        if not files:
+        package_files = archive.getfiles(filepath)
+        if not package_files:
+            message.warning("empty archive provided for package '{0}'. Aborting...".format(package))
             try:
-                rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
+                rmtree(package_directory)
             except OSError:
                 raise
             raise InstallError
 
         try:
-            files_dump = open('files', 'w')
-            for each in files:
-                files_dump.write(each+'\n')
+            package_files_dump_handle = open('files', 'w')
         except IOError:
+            message.warning("could not write the file list for package '{0}'. Aborting...".format(package))
+            try:
+                rmtree(package_directory)
+            except OSError:
+                raise
             raise InstallError
-        files_dump.close()
+        else:
+            for each in package_files:
+                package_files_dump_handle.write(each+'\n')
+            package_files_dump_handle.close()
 
         if not archive.extract(filepath, configuration.root()):
+            message.warning("could not extract the archive provided for package '{0}'. Aborting...".format(package))
             try:
-                rmtree(db+'installed/'+name+'/'+version+'/'+architecture)
+                rmtree(package_directory)
             except OSError:
                 raise
             raise InstallError
 
     try:
         if not dump.package(package, 'metadata.yml'):
-            message.warning("failed to write metadata.yml for package '{0}'.".format(package))
+            message.warning("failed to write metadata.yml for package '{0}'. Aborting...".format(package))
             raise InstallError
     except IOError:
         raise
@@ -159,14 +174,14 @@ def _uninstall(configuration, installed, package, keep_static):
             if the uninstallation was successfully completed.
     """
 
-    db = configuration.db()
-    root = configuration.root()
     architecture = package.architecture
     name = package.name
     version = package.version
+    db = configuration.db()
+    root = configuration.root()
 
     if package not in installed:
-        message.warning("package '{0}' is not installed.".format(package))
+        message.warning("'{0}' is not installed. Aborting...".format(package))
         raise UninstallError
 
     try:
@@ -175,56 +190,59 @@ def _uninstall(configuration, installed, package, keep_static):
         message.warning("could not access the directory belonging to package '{0}'.".format(package))
         raise UninstallError
 
-    files = []
+    package_files = []
     try:
         handle = open('files')
     except IOError:
         pass
     else:
-        files = handle.read().splitlines()
+        package_files = handle.read().splitlines()
         handle.close()
 
-    for each in files:
-        if not access(root+each, W_OK):
-            message.warning("cannot remove file '{0}' from package '{1}'.".format(root+each, package))
-            raise UninstallError
-
-    must_remove = [
+    craft_files = [
         db+'installed/'+name+'/'+version+'/'+architecture+'/metadata.yml',
         db+'installed/'+name+'/'+version+'/'+architecture+'/files',
         db+'installed/'+name+'/'+version+'/'+architecture
     ]
 
-    for each in must_remove:
+    for each in package_files:
+        if not access(root+each, W_OK):
+            message.warning("cannot remove file '{0}' from package '{1}'.".format(root+each, package))
+            raise UninstallError
+
+    for each in craft_files:
         if isfile(each) or isdir(each):
             if not access(each, W_OK):
                 message.warning("cannot remove file '{0}'.".format(each))
                 raise UninstallError
 
-    # These two nearly identical loops are used
-    # so that the 'if' statement does not need to be evaluated
-    # inside the loop, thus boosting performance
     if keep_static:
-        for each in files:
-            if isdir(root+each):
-                rmdir(root+each)
-            elif isfile(root+each):
-                if each in package.static():
-                    rename(root+each, root+each+'.craft-old')
-                else:
-                    remove(root+each)
-    else:
-        for each in files:
+        for each in package.static():
+            try:
+                rename(root+each, root+each+'.craft-old')
+            except OSError:
+                message.warning("could not preserve the following static file: '{0}'.".format(root+each))
+                pass
+
+    for each in package_files:
+        try:
             if isdir(root+each):
                 rmdir(root+each)
             elif isfile(root+each):
                 remove(root+each)
+        except OSError:
+            message.warning("could not delete the following file: '{0}'.".format(root+each))
+            pass
 
-    for each in must_remove:
-        if isdir(each):
-            rmdir(each)
-        elif isfile(each):
-            remove(each)
+    for each in craft_files:
+        try:
+            if isdir(each):
+                rmdir(each)
+            elif isfile(each):
+                remove(each)
+        except OSError:
+            message.warning("could not delete the following file: '{0}'.".format(each))
+            pass
 
     try_to_remove = [
         db+'installed/'+name+'/'+version,
