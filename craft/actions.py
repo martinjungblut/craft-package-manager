@@ -2,7 +2,7 @@
 
 # Standard library imports
 from glob import glob
-from os import system, mkdir, chdir, rmdir, remove, access, W_OK
+from os import system, mkdir, chdir, rmdir, remove, rename, access, W_OK
 from os.path import isfile, isdir
 from shutil import rmtree
 
@@ -138,7 +138,7 @@ def _install(configuration, installed, package, filepath):
     installed.add(package)
     return True
 
-def _uninstall(configuration, installed, package):
+def _uninstall(configuration, installed, package, keep_static):
     """ Performs a low-level package uninstallation.
 
     Parameters
@@ -148,6 +148,9 @@ def _uninstall(configuration, installed, package):
             Set having all currently installed units on the system.
         package
             the Package unit to be uninstalled.
+        keep_static
+            specifies whether the package's static files must be preserved
+            or not.
     Raises
         UninstallError
             if any error occurs during the uninstallation.
@@ -198,11 +201,25 @@ def _uninstall(configuration, installed, package):
                 message.warning("cannot remove file '{0}'.".format(each))
                 raise UninstallError
 
-    for each in files:
-        if isdir(root+each):
-            rmdir(root+each)
-        elif isfile(root+each):
-            remove(root+each)
+    # These two nearly identical loops are used
+    # so that the 'if' statement does not need to be evaluated
+    # inside the loop, thus boosting performance
+    if keep_static:
+        for each in files:
+            if isdir(root+each):
+                rmdir(root+each)
+            elif isfile(root+each):
+                if each in package.static():
+                    rename(root+each, root+each+'.craft-old')
+                else:
+                    remove(root+each)
+    else:
+        for each in files:
+            if isdir(root+each):
+                rmdir(root+each)
+            elif isfile(root+each):
+                remove(root+each)
+
     for each in must_remove:
         if isdir(each):
             rmdir(each)

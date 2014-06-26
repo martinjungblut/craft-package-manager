@@ -231,6 +231,11 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
             return self.data['replaces']
         return []
 
+    def static(self):
+        if self.data['files']['static']:
+            return self.data['files']['static']
+        return []
+
     def check_for_conflicts(self, installed, targeted):
         """ Checks whether the package conflicts with any units
         that are already installed or targeted for installation.
