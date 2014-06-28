@@ -1,0 +1,132 @@
+#!/usr/bin/python
+
+"""Craft - A next-generation package manager for UNIX-like operating systems.
+
+Usage:
+    craft install <unit> ...
+    craft uninstall [--obsolete | --unneeded] <unit> ...
+    craft upgrade [<unit>] ...
+    craft downgrade [<unit>] ...
+    craft search [--installed | --available] <term>
+    craft list [--installed | --available]
+    craft sync
+    craft clear
+    craft (-h | --help | --version)
+"""
+
+# Third-part imports
+from docopt import docopt
+
+# Craft imports
+from craft import actions, load, message, elements
+
+args = docopt(__doc__, version='0.1')
+
+try:
+    configuration = load.configuration('config.yml')
+    available = load.available(configuration)
+    installed = load.installed(configuration)
+except:
+    raise
+
+def target(attempt_target, default_architecture):
+    targeted = []
+    for each in attempt_target:
+        found = available.target(each)
+        if not found:
+            found = available.target(each+':'+default_architecture)
+        if found:
+            targeted.append(found)
+    return targeted
+
+def user_agrees():
+    print("Proceed? y/n")
+    while True:
+        choice = raw_input().lower()
+        if choice == 'y':
+            return True
+        elif choice == 'n':
+            return False
+        else:
+            print("Invalid choice. Please try again.")
+
+if args['sync']:
+    actions.sync(configuration)
+elif args['clear']:
+    actions.clear(configuration, True)
+elif args['search']:
+    installed_found = []
+    available_found = []
+    if args['--installed']:
+        installed_found = installed.search(args['<term>'])
+    elif args['--available']:
+        available_found = available.search(args['<term>'])
+    else:
+        installed_found = installed.search(args['<term>'])
+        available_found = available.search(args['<term>'])
+    if installed_found or available_found:
+        for unit in sorted(installed_found):
+            print("installed: {0}".format(unit))
+        for unit in sorted(available_found):
+            print("available: {0}".format(unit))
+    else:
+        print("No matches found.")
+elif args['list']:
+    if args['--installed']:
+        for unit in sorted(installed):
+            print("installed: {0}".format(unit))
+    elif args['--available']:
+        for unit in sorted(available):
+            print("available: {0}".format(unit))
+    else:
+        for unit in sorted(installed):
+            print("installed: {0}".format(unit))
+        for unit in sorted(available):
+            print("available: {0}".format(unit))
+elif args['install']:
+    targeted = target(args['<unit>'], configuration.default_architecture())
+
+    if not targeted:
+        print("No matches found.")
+        exit()
+
+    try:
+        targeted = actions.install(configuration, installed, available, targeted)
+    except elements.Conflict as c:
+        message.warning("A conflict has been found between the units '{0}' and '{1}'. Aborting...".format(c.first_unit, c.second_unit))
+        exit()
+    except elements.BrokenDependency as d:
+        message.warning("Package '{0}' depends on '{1}', but such dependency is not currently available to be installed. Aborting...".format(d.package, d.dependency_description))
+    except:
+        raise
+
+    if not targeted:
+        print("No units to install.")
+        exit()
+
+    print("The following units are going to be installed:")
+    counter = 0
+    for unit in targeted:
+        print("{0} - {1}".format(counter, unit))
+        counter = counter+1
+
+    if not user_agrees():
+        print("Maybe next time... Good bye!")
+        exit()
+
+    try:
+        actions.download(configuration, targeted)
+    except actions.DownloadError as d:
+        print("An error has occurred while downloading the package '{0}'. Aborting...".format(d.package))
+        exit()
+
+    for package in targeted:
+        if package.has_checksum():
+            archive_path = configuration.db()+'available/'+package.repository+'/cache/'+package.name+'/'+package.version+'/'+package.architecture+'/package.tar.gz'
+        else:
+            archive_path = False
+        package.save_temporary_flags()
+        try:
+            actions._install(configuration, installed, package, archive_path)
+        except actions.InstallError as ie:
+            message.warning("An error has occurred while installing the following package: '{0}'.".format(package))

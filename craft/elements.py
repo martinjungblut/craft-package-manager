@@ -131,8 +131,15 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
         if isinstance(other, (Group, VirtualPackage)):
             if self.name == other.name:
                 return True
-        elif str(self) == str(other):
-            return True
+        if isinstance(other, Package):
+            if self.name == other.name and self.architecture == other.architecture:
+                return True
+        return False
+
+    def __lt__(self, other):
+        if isinstance(other, Package):
+            if dsl.version.compare(self.version, other.version) == 1:
+                return True
         return False
 
     def has_checksum(self, checksum=False):
@@ -527,8 +534,6 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
         if isinstance(other, (Group, VirtualPackage, Package)):
             if self.name == other.name:
                 return True
-        elif str(self) == str(other):
-            return True
         return False
 
     def provided_by(self, package):
@@ -583,7 +588,7 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
                         valid_choice = True
 
             package = organised[choice]
-            print("Your choice was: '{0}'".format(package))
+            print("Your choice was: '{0}'.".format(package))
 
             already_targeted.add(self)
             to_install.add(package)
@@ -707,8 +712,6 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
         if isinstance(other, (Group, VirtualPackage, Package)):
             if self.name == other.name:
                 return True
-        elif str(self) == str(other):
-            return True
         return False
 
     def add(self, package):
@@ -859,8 +862,12 @@ class Set(set):
 
     def __contains__(self, key):
         for unit in self:
-            if str(unit) == key:
-                return unit
+            if isinstance(key, (Group, VirtualPackage)):
+                if unit.name == key.name:
+                    return unit
+            elif isinstance(key, Package) and isinstance(unit, Package):
+                if unit.name == key.name and unit.architecture == key.architecture:
+                    return unit
         return False
 
     def search(self, term):
@@ -870,13 +877,10 @@ class Set(set):
             term
                 string to be searched for.
                 automatically converted to lowercase.
-        Raises
-            ValueError
-                if no units could be found matching
-                the specified term.
         Returns
             list
                 having all units found.
+                empty in case no units were found.
         """
 
         term = str(term).lower()
@@ -892,7 +896,7 @@ class Set(set):
         if len(found) > 0:
             return found
         else:
-            raise ValueError
+            return []
 
     def target(self, targeting_description):
         """ Targets a specific unit based on a targeting description.
@@ -910,7 +914,7 @@ class Set(set):
         parsed = dsl.relationship.parse(targeting_description)
 
         if parsed:
-            for unit in self:
+            for unit in sorted(self):
                 if isinstance(unit, Package):
                     try:
                         if parsed[0] == unit.name and parsed[1] == unit.architecture and parsed[2] == unit.version:
@@ -963,8 +967,13 @@ class Configuration(object):
 
         self.data = data
 
+    def default_architecture(self):
+        """ Retrieve the configuration's default architecture. """
+
+        return self.data['architectures']['default']
+
     def architectures(self):
-        """ Retrieve the confiuration's architectures. """
+        """ Retrieve the configuration's architectures. """
 
         return self.data['architectures']['enabled']
 

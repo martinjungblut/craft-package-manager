@@ -574,33 +574,6 @@ def download(configuration, packages):
 
     return True
 
-def search(term, set):
-    """ Search for units.
-
-    Parameters
-        term
-            string to be searched for.
-        set
-            Set object to perform the search on.
-    Raises
-        ValueError
-            if no units could be found matching the specified term.
-    Returns
-        True
-            if the search was successful, and one or more units were found
-            matching the specified criteria.
-    """
-
-    try:
-        found = set.search(term)
-    except ValueError:
-        message.simple("Nothing found while search for the term '{0}'.".format(term))
-        raise
-    else:
-        for each in found:
-            message.simple("{0}".format(each))
-        return True
-
 def clear(configuration, cache):
     """ Clears the local cache and repositories' metadata.
 
