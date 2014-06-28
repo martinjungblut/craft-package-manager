@@ -14,7 +14,7 @@ Usage:
     craft (-h | --help | --version)
 """
 
-# Third-part imports
+# Third-party imports
 from docopt import docopt
 
 # Craft imports
@@ -129,4 +129,4 @@ elif args['install']:
         try:
             actions._install(configuration, installed, package, archive_path)
         except actions.InstallError as ie:
-            message.warning("An error has occurred while installing the following package: '{0}'.".format(package))
+            message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
