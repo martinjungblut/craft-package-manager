@@ -449,6 +449,50 @@ def upgrade(installed, available, attempt_upgrade):
 
     return [to_install, to_uninstall]
 
+def downgrade(installed, available, attempt_downgrade):
+    """ Returns a collection of units for performing an downgrade.
+
+    Parameters
+        installed
+            Set having all currently installed units on the system.
+        available
+            Set having all currently available units on the system.
+        attempt_downgrade
+            an iterable having all units the user is attempting
+            to get to be downgraded.
+    Raises
+        BrokenDependency
+            if a newly found dependency could not be satisfied.
+    Returns
+        list
+            having the units that must be installed, and are replacing older
+            units, the units to be uninstalled, and are being replaced,
+            and the newly found dependencies.
+    """
+
+    already_targeted_for_installation = Set()
+    already_targeted_for_downgrade = Set()
+    attempt_downgrade = Set(attempt_downgrade)
+    to_install = Set()
+    to_uninstall = Set()
+
+    # Ignore units which are not installed
+    for unit in list(attempt_downgrade):
+        if unit not in installed:
+            message.simple("'{0}' is not installed and therefore cannot be downgraded. Ignoring...".format(unit))
+            attempt_downgrade.remove(unit)
+
+    for unit in attempt_downgrade:
+        if isinstance(unit, Downgradeable):
+            try:
+                unit.target_for_downgrade(installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall)
+            except BrokenDependency:
+                raise
+        else:
+            message.simple("'{0}' is not downgradeable. Ignoring...".format(unit))
+
+    return [to_install, to_uninstall]
+
 def download(configuration, packages):
     """ Download packages.
 
