@@ -340,7 +340,7 @@ def install(configuration, installed, available, attempt_install):
     to_install = Set()
 
     # Remove all already installed units from the list
-    for unit in attempt_install:
+    for unit in list(attempt_install):
         if unit in installed:
             message.simple("'{0}' is already installed. Ignoring...".format(unit))
             attempt_install.remove(unit)
@@ -355,18 +355,12 @@ def install(configuration, installed, available, attempt_install):
         else:
             message.simple("'{0}' is not installable. Ignoring...".format(unit))
 
-    # Remove all already installed units from the list a second time
-    for unit in to_install:
-        if unit in installed:
-            message.simple("'{0}' is already installed. Ignoring...".format(unit))
-            to_install.remove(unit)
-
     # Check if any of the units is not allowed due to one their CPU
     # architectures not being enabled
     for unit in to_install:
         if not configuration.is_unit_allowed(unit):
             message.simple("'{0}' is not allowed to be installed since its architecture is not currently enabled.".format(unit))
-            raise PackageNotAllowed
+            raise PackageNotAllowed(unit)
 
     # Check for conflicts
     for unit in to_install:
@@ -432,10 +426,10 @@ def upgrade(installed, available, attempt_upgrade):
             and the newly found dependencies.
     """
 
-    already_targeted = Set()
+    already_targeted_for_installation = Set()
+    already_targeted_for_upgrade = Set()
     attempt_upgrade = Set(attempt_upgrade)
     to_install = Set()
-    to_install_new = Set()
     to_uninstall = Set()
 
     # Ignore units which are not installed
@@ -447,13 +441,13 @@ def upgrade(installed, available, attempt_upgrade):
     for unit in attempt_upgrade:
         if isinstance(unit, Upgradeable):
             try:
-                unit.target_for_upgrade(installed, available, already_targeted, to_install, to_uninstall, to_install_new)
+                unit.target_for_upgrade(installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall)
             except BrokenDependency:
                 raise
         else:
             message.simple("'{0}' is not upgradeable. Ignoring...".format(unit))
 
-    return [to_install, to_uninstall, to_install_new]
+    return [to_install, to_uninstall]
 
 def download(configuration, packages):
     """ Download packages.

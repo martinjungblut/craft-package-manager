@@ -77,7 +77,7 @@ class Upgradeable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def target_for_upgrade(self, installed, available, already_targeted, to_install, to_uninstall, to_install_new):
+    def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         raise NotImplementedError
 
 class Downgradeable(object):
@@ -161,6 +161,19 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                 return self.data['checksums'][checksum]
         return False
 
+    def has_flag(self, flag):
+        """ Checks whether the package has a specific flag.
+
+        Parameters
+            flag
+                the flag to be checked for.
+        """
+
+        if self.data['flags'] and flag in self.data['flags']:
+            return True
+        else:
+            return False
+
     def add_flag(self, flag):
         """ Adds a specific flag to the package.
 
@@ -201,6 +214,18 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
             return True
 
         return False
+
+    def add_temporary_flags(self, flags):
+        """ Adds a collection of temporary flags to the package.
+
+        Parameters
+            flags
+                the temporary flags to be added to the package.
+        """
+
+        for flag in flags:
+            if flag not in self.temporary_flags:
+                self.temporary_flags.append(flag)
 
     def save_temporary_flags(self):
         """ Saves the current temporary flags
@@ -259,6 +284,11 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
             return self.data['files']['static']
         return []
 
+    def flags(self):
+        if self.data['flags']:
+            return self.data['flags']
+        return []
+
     def check_for_conflicts(self, installed, targeted):
         """ Checks whether the package conflicts with any units
         that are already installed or targeted for installation.
@@ -304,7 +334,7 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                 if a dependency could not be satisfied.
         """
 
-        if self not in already_targeted:
+        if self not in installed and not already_targeted.target(self.name+':'+self.architecture):
 
             if self in attempt_install:
                 self.add_temporary_flag('installed-by-user')
@@ -380,9 +410,9 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                     if unit and unit not in already_targeted:
                         unit.target_for_uninstallation(installed, attempt_uninstall, already_targeted, to_uninstall)
 
-    def target_for_upgrade(self, installed, available, already_targeted, to_install, to_uninstall, to_install_new):
+    def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the group is a target for an
-        upgrade operation. This method operates on the parameters already_targeted, to_install,
+        upgrade operation. This method operates on the parameters already_targeted_for_upgrade, to_install,
         to_uninstall and to_install_new, and does not return anything.
 
         Parameters
@@ -390,9 +420,12 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                 Set having all currently installed units on the system.
             available
                 Set having all currently available units on the system.
-            already_targeted
+            already_targeted_for_upgrade
                 Set having all units that were already targeted to be
                 upgraded.
+            already_targeted_for_installation
+                Set having all newly found units that were already targeted to be
+                installed.
             to_install
                 Set having all Package units that are upgrading older, obsolete Packages.
             to_uninstall
@@ -405,8 +438,8 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                 if a newly found dependency could not be satisfied.
         """
 
-        if self not in already_targeted:
-            already_targeted.add(self)
+        if self in installed and self not in already_targeted_for_upgrade:
+            already_targeted_for_upgrade.add(self)
             substitute = False
 
             for package in available.packages():
@@ -428,6 +461,7 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                             break
 
             if substitute:
+                substitute.add_temporary_flags(self.flags())
                 to_uninstall.add(self)
                 to_install.add(substitute)
 
@@ -436,16 +470,16 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable):
                     if unit:
                         if unit in installed:
                             if isinstance(unit, Upgradeable):
-                                unit.target_for_upgrade(installed, available, already_targeted, to_install, to_uninstall, to_install_new)
+                                unit.target_for_upgrade(installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall)
                         else:
-                            to_install_new.add(unit)
+                            unit.target_for_installation(installed, available, Set(), already_targeted_for_installation, to_install)
                     else:
                         raise BrokenDependency(substitute, dependency)
 
                 for virtual in substitute.provides():
                     unit = available.target(virtual)
-                    if unit not in already_targeted:
-                        already_targeted.add(unit)
+                    if unit not in already_targeted_for_upgrade:
+                        already_targeted_for_upgrade.add(unit)
 
 class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable):
     """ Represents a virtual package. """
@@ -489,7 +523,7 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable):
                 targeted for installation.
         """
 
-        if self not in already_targeted:
+        if self not in installed and self not in already_targeted:
 
             organised = {}
             counter = 0
@@ -558,7 +592,7 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable):
                 for provided in self.provided:
                     provided.target_for_uninstallation(installed, attempt_uninstall, already_targeted, to_uninstall)
 
-    def target_for_upgrade(self, installed, available, already_targeted, to_install, to_uninstall, to_install_new):
+    def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the group is a target for an
         upgrade operation. This method operates on the parameters already_targeted, to_install,
         to_uninstall and to_install_new, and does not return anything.
@@ -580,11 +614,11 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable):
                 Set having all Package units that must be installed after the upgrade is performed.
         """
 
-        if self not in already_targeted:
-            already_targeted.add(self)
+        if self in installed and self not in already_targeted_for_upgrade:
+            already_targeted_for_upgrade.add(self)
 
             for provided in self.provided:
-                provided.target_for_upgrade(installed, available, already_targeted,to_install, to_uninstall, to_install_new)
+                provided.target_for_upgrade(installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall)
 
 class Group(Unit, Installable, Uninstallable, Upgradeable):
     """ Represents a group of packages. """
@@ -642,11 +676,12 @@ class Group(Unit, Installable, Uninstallable, Upgradeable):
                 targeted for installation.
         """
 
-        if self not in already_targeted:
+        if self not in installed and self not in already_targeted:
             already_targeted.add(self)
 
-            for package in self.packages:
-                attempt_install.add(package)
+            if self in attempt_install:
+                for package in self.packages:
+                    attempt_install.add(package)
 
             for package in self.packages:
                 package.target_for_installation(installed, available, attempt_install, already_targeted, to_install)
@@ -679,7 +714,7 @@ class Group(Unit, Installable, Uninstallable, Upgradeable):
             for package in self.packages:
                 package.target_for_uninstallation(installed, attempt_uninstall, already_targeted, to_uninstall)
 
-    def target_for_upgrade(self, installed, available, already_targeted, to_install, to_uninstall, to_install_new):
+    def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the group is a target for an
         upgrade operation. This method operates on the parameters already_targeted, to_install,
         to_uninstall and to_install_new, and does not return anything.
@@ -701,11 +736,11 @@ class Group(Unit, Installable, Uninstallable, Upgradeable):
                 Set having all Package units that must be installed after the upgrade is performed.
         """
 
-        if self not in already_targeted:
-            already_targeted.add(self)
+        if self in installed and self not in already_targeted_for_upgrade:
+            already_targeted_for_upgrade.add(self)
 
             for package in self.packages:
-                package.target_for_upgrade(installed, available, already_targeted, to_install, to_uninstall, to_install_new)
+                package.target_for_upgrade(installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall)
 
 class Set(set):
     """ Represents a set of units. """
