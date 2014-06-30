@@ -53,14 +53,14 @@ class Unit(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
 
-    def as_target(self):
-        return self.name
-
     def __lt__(self, other):
         if isinstance(other, Unit):
             if self.name < other.name:
                 return True
         return False
+
+    def as_target(self):
+        return self.name
 
 class Installable(object):
     """ Interface for installable units. """
@@ -95,7 +95,16 @@ class Downgradeable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def target_for_downgrade(installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall):
+    def target_for_downgrade(self, installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall):
+        raise NotImplementedError
+
+class Describable(object):
+    """ Interface for describable units. """
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def describe(self, context):
         raise NotImplementedError
 
 class Incompatible(object):
@@ -107,7 +116,7 @@ class Incompatible(object):
     def check_for_conflicts(self, installed, targeted):
         raise NotImplementedError
 
-class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downgradeable):
+class Package(Unit, Incompatible, Describable, Installable, Uninstallable, Upgradeable, Downgradeable):
     """ Represents a remotely available package. """
 
     def __init__(self, name, version, architecture, repository, data):
@@ -147,6 +156,70 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
 
     def as_target(self):
         return "{0}:{1}".format(self.name, self.architecture)
+
+    def describe(self, context):
+        """ Prints a detailed description of the package.
+
+        Parameters
+            context
+                the Set where the package belongs to.
+        """
+
+        conflicts = self.conflicts()
+        dependencies = self.dependencies()
+        flags = self.flags()
+        tags = self.tags()
+        maintainers = self.maintainers()
+        misc = self.misc()
+        provides = self.provides()
+        replaces = self.replaces()
+        reverse_dependencies = []
+        hashed = {'Dependencies':dependencies, 'Conflicts':conflicts, 'Replaces':replaces, 'Provides':provides}
+
+        print('Name: '+self.name)
+        print('Version: '+self.version)
+        print('Architecture: '+self.architecture)
+
+        for package in context.packages():
+            for dependency in package.dependencies():
+                if dependency == self.as_target():
+                    reverse_dependencies.append(package)
+                else:
+                    for virtual in self.provides():
+                        if dependency == virtual:
+                            reverse_dependencies.append(package)
+        if reverse_dependencies:
+            print('Reverse dependencies')
+            for unit in reverse_dependencies:
+                print('  {0}'.format(unit))
+
+        for description in hashed.iterkeys():
+            if hashed[description]:
+                print(description)
+                for target_description in hashed[description]:
+                    unit = context.target(target_description)
+                    if unit:
+                        print('  {0}'.format(unit))
+
+        if flags:
+            print('Flags')
+            for flag in flags:
+                print('  '+flag)
+
+        if tags:
+            print('Tags')
+            for tag in tags:
+                print('  '+tag)
+
+        if maintainers:
+            print('Maintainers')
+            for maintainer in maintainers:
+                print('  '+maintainer)
+
+        if misc:
+            print('Miscellaneous')
+            for key in misc.iterkeys():
+                print('  {0}: {1}'.format(key, misc[key]))
 
     def has_checksum(self, checksum=False):
         """ Checks whether the package has a specific checksum, or any
@@ -301,6 +374,21 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
         if self.data['flags']:
             return self.data['flags']
         return []
+
+    def tags(self):
+        if self.data['information']['tags']:
+            return self.data['information']['tags']
+        return []
+
+    def maintainers(self):
+        if self.data['information']['maintainers']:
+            return self.data['information']['maintainers']
+        return []
+
+    def misc(self):
+        if self.data['information']['misc']:
+            return self.data['information']['misc']
+        return {}
 
     def check_for_conflicts(self, installed, targeted):
         """ Checks whether the package conflicts with any units
@@ -548,7 +636,7 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
                     if unit not in already_targeted_for_downgrade:
                         already_targeted_for_downgrade.add(unit)
 
-class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
+class VirtualPackage(Unit, Describable, Installable, Uninstallable, Upgradeable, Downgradeable):
     """ Represents a virtual package. """
 
     def __init__(self, name):
@@ -557,6 +645,18 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
 
     def __unicode__(self):
         return "{0} (virtual package)".format(self.name)
+
+    def describe(self, context):
+        """ Prints a detailed description of the virtual package.
+
+        Parameters
+            context
+                the Set where the package belongs to.
+        """
+
+        print("The following packages provide '{0}':".format(self))
+        for package in self.provided:
+            print(package)
 
     def provided_by(self, package):
         self.provided.append(package)
@@ -711,7 +811,7 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
             for provided in self.provided:
                 provided.target_for_downgrade(installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall)
 
-class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
+class Group(Unit, Describable, Installable, Uninstallable, Upgradeable, Downgradeable):
     """ Represents a group of packages. """
 
     def __init__(self, name):
@@ -727,6 +827,18 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
 
     def __unicode__(self):
         return "{0} (group)".format(self.name)
+
+    def describe(self, context):
+        """ Prints a detailed description of the virtual package.
+
+        Parameters
+            context
+                the Set where the package belongs to.
+        """
+
+        print("'{0}' has the following packages:".format(self))
+        for package in self.packages:
+            print(package)
 
     def add(self, package):
         """ Adds a package to the group.

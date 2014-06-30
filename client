@@ -9,6 +9,7 @@ Usage:
     craft downgrade [<unit>] ...
     craft search [--installed | --available] <term>
     craft list [--installed | --available]
+    craft describe [--installed | --available] <unit> ...
     craft sync
     craft clear
     craft (-h | --help | --version)
@@ -309,3 +310,16 @@ elif args['downgrade']:
             exit()
 
     message.simple('All packages have been successfully downgraded. Good bye!')
+elif args['describe']:
+    if args['<unit>']:
+        targeted = target(installed, args['<unit>'], configuration.default_architecture())
+    else:
+        targeted = installed
+
+    if not targeted:
+        message.simple("No matches found.")
+        exit()
+
+    for unit in targeted:
+        if isinstance(unit, elements.Describable):
+            unit.describe(installed)
