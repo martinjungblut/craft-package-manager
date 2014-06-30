@@ -136,12 +136,12 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
     def __unicode__(self):
         return "{0}:{1} {2}".format(self.name, self.architecture, self.version)
 
-    def __lt__(self, other):
+    def __gt__(self, other):
         if isinstance(other, Package):
             if dsl.version.compare(self.version, other.version) == 1:
                 return True
         elif isinstance(other, Unit):
-            if self.name < other.name:
+            if self.name > other.name:
                 return True
         return False
 

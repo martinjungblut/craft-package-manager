@@ -209,6 +209,12 @@ elif args['upgrade']:
         print("Maybe next time... Good bye!")
         exit()
 
+    try:
+        actions.download(configuration, to_install)
+    except actions.DownloadError as d:
+        message.warning("An error has occurred while downloading the package '{0}'. Aborting...".format(d.package))
+        exit()
+
     for package in to_uninstall:
         try:
             message.simple("Uninstalling '{0}'...".format(package))
@@ -271,6 +277,12 @@ elif args['downgrade']:
 
     if not user_agrees():
         print("Maybe next time... Good bye!")
+        exit()
+
+    try:
+        actions.download(configuration, to_install)
+    except actions.DownloadError as d:
+        message.warning("An error has occurred while downloading the package '{0}'. Aborting...".format(d.package))
         exit()
 
     for package in to_uninstall:
