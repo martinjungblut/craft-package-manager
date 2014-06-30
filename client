@@ -29,12 +29,12 @@ try:
 except:
     raise
 
-def target(attempt_target, default_architecture):
+def target(Set, attempt_target, default_architecture):
     targeted = []
     for each in attempt_target:
-        found = available.target(each)
+        found = Set.target(each)
         if not found:
-            found = available.target(each+':'+default_architecture)
+            found = Set.target(each+':'+default_architecture)
         if found:
             targeted.append(found)
     return targeted
@@ -84,10 +84,10 @@ elif args['list']:
         for unit in sorted(available):
             print("available: {0}".format(unit))
 elif args['install']:
-    targeted = target(args['<unit>'], configuration.default_architecture())
+    targeted = target(available, args['<unit>'], configuration.default_architecture())
 
     if not targeted:
-        print("No matches found.")
+        message.simple("No matches found.")
         exit()
 
     try:
@@ -101,7 +101,7 @@ elif args['install']:
         raise
 
     if not targeted:
-        print("No units to install.")
+        message.simple("No units to install.")
         exit()
 
     print("The following units are going to be installed:")
@@ -117,7 +117,7 @@ elif args['install']:
     try:
         actions.download(configuration, targeted)
     except actions.DownloadError as d:
-        print("An error has occurred while downloading the package '{0}'. Aborting...".format(d.package))
+        message.warning("An error has occurred while downloading the package '{0}'. Aborting...".format(d.package))
         exit()
 
     for package in targeted:
@@ -127,6 +127,44 @@ elif args['install']:
             archive_path = False
         package.save_temporary_flags()
         try:
+            message.simple("Installing '{0}'...".format(package))
             actions._install(configuration, installed, package, archive_path)
+            message.simple("'{0}' was successfully installed...".format(package))
         except actions.InstallError as ie:
             message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
+            exit()
+
+    message.simple('All packages have been successfully installed. Good bye!')
+elif args['uninstall']:
+    targeted = target(installed, args['<unit>'], configuration.default_architecture())
+
+    if not targeted:
+        message.simple("No matches found.")
+        exit()
+
+    targeted = actions.uninstall(installed, targeted)
+
+    if not targeted:
+        message.simple("No units to uninstall.")
+        exit()
+
+    print("The following units are going to be uninstalled:")
+    counter = 0
+    for unit in targeted:
+        print("{0} - {1}".format(counter, unit))
+        counter = counter+1
+
+    if not user_agrees():
+        print("Maybe next time... Good bye!")
+        exit()
+
+    for package in targeted:
+        try:
+            message.simple("Uninstalling '{0}'...".format(package))
+            actions._uninstall(configuration, installed, package, False)
+            message.simple("'{0}' was successfully uninstalled...".format(package))
+        except actions.UninstallError as ue:
+            message.warning("An error has occurred while uninstalling the following package: '{0}'.".format(ue.package))
+            exit()
+
+    message.simple('All packages have been successfully uninstalled. Good bye!')

@@ -53,6 +53,15 @@ class Unit(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
 
+    def as_target(self):
+        return self.name
+
+    def __lt__(self, other):
+        if isinstance(other, Unit):
+            if self.name < other.name:
+                return True
+        return False
+
 class Installable(object):
     """ Interface for installable units. """
 
@@ -127,18 +136,15 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
     def __unicode__(self):
         return "{0}:{1} {2}".format(self.name, self.architecture, self.version)
 
-    def __eq__(self, other):
-        if isinstance(other, (Group, VirtualPackage)):
-            if self.name == other.name:
-                return True
-        if isinstance(other, Package):
-            if self.name == other.name and self.architecture == other.architecture:
-                return True
-        return False
+    def as_target(self):
+        return "{0}:{1}".format(self.name, self.architecture)
 
     def __lt__(self, other):
         if isinstance(other, Package):
             if dsl.version.compare(self.version, other.version) == 1:
+                return True
+        elif isinstance(other, Unit):
+            if self.name < other.name:
                 return True
         return False
 
@@ -341,8 +347,7 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
                 if a dependency could not be satisfied.
         """
 
-        if self not in installed and not already_targeted.target(self.name+':'+self.architecture):
-
+        if self not in installed and self not in already_targeted:
             if self in attempt_install:
                 self.add_temporary_flag('installed-by-user')
             else:
@@ -394,11 +399,10 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
 
         if self not in already_targeted:
             already_targeted.add(self)
-            dependency_description = '{0}:{1}'.format(self.name, self.architecture)
             allow_uninstallation = True
 
             for package in installed.packages():
-                if dependency_description in package.dependencies():
+                if self.as_target() in package.dependencies():
                     if package not in attempt_uninstall and package not in already_targeted:
                         print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
                         allow_uninstallation = False
@@ -419,8 +423,9 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
 
     def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the package is a target for an
-        upgrade operation. This method operates on the parameters already_targeted_for_upgrade, to_install,
-        to_uninstall and to_install_new, and does not return anything.
+        upgrade operation. This method operates on the parameters already_targeted_for_upgrade,
+        already_targeted_for_installation, to_install and to_uninstall,
+        and does not return anything.
 
         Parameters
             installed
@@ -438,8 +443,6 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
             to_uninstall
                 Set having all Package units that are being upgraded, and must therefore
                 be removed.
-            to_install_new
-                Set having all Package units that must be installed after the upgrade is performed.
         Raises
             BrokenDependency
                 if a newly found dependency could not be satisfied.
@@ -489,6 +492,31 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
                         already_targeted_for_upgrade.add(unit)
 
     def target_for_downgrade(self, installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall):
+        """ Triggered when the package is a target for a
+        downgrade operation. This method operates on the parameters already_targeted_for_downgrade,
+        already_targeted_for_installation, to_install and to_uninstall,
+        and does not return anything.
+
+        Parameters
+            installed
+                Set having all currently installed units on the system.
+            available
+                Set having all currently available units on the system.
+            already_targeted_for_downgrade
+                Set having all units that were already targeted to be
+                downgraded.
+            already_targeted_for_installation
+                Set having all newly found units that were already targeted to be
+                installed.
+            to_install
+                Set having all Package units that are downgrading older, obsolete Packages.
+            to_uninstall
+                Set having all Package units that are being downgraded, and must therefore
+                be removed.
+        Raises
+            BrokenDependency
+                if a newly found dependency could not be satisfied.
+        """
 
         if self in installed and self not in already_targeted_for_downgrade:
             already_targeted_for_downgrade.add(self)
@@ -529,12 +557,6 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
 
     def __unicode__(self):
         return "{0} (virtual package)".format(self.name)
-
-    def __eq__(self, other):
-        if isinstance(other, (Group, VirtualPackage, Package)):
-            if self.name == other.name:
-                return True
-        return False
 
     def provided_by(self, package):
         self.provided.append(package)
@@ -631,8 +653,9 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
 
     def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the virtual package is a target for an
-        upgrade operation. This method operates on the parameters already_targeted_for_upgrade, to_install,
-        to_uninstall and to_install_new, and does not return anything.
+        upgrade operation. This method operates on the parameters already_targeted_for_downgrade,
+        already_targeted_for_installation, to_install and to_uninstall,
+        and does not return anything.
 
         Parameters
             installed
@@ -650,8 +673,6 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
             to_uninstall
                 Set having all Package units that are being upgraded, and must therefore
                 be removed.
-            to_install_new
-                Set having all Package units that must be installed after the upgrade is performed.
         """
 
         if self in installed and self not in already_targeted_for_upgrade:
@@ -661,9 +682,10 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
                 provided.target_for_upgrade(installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall)
 
     def target_for_downgrade(self, installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall):
-        """ Triggered when the virtual package is a target for an
-        downgrade operation. This method operates on the parameters already_targeted_for_downgrade, to_install,
-        to_uninstall and to_install_new, and does not return anything.
+        """ Triggered when the virtual package is a target for a
+        downgrade operation. This method operates on the parameters already_targeted_for_downgrade,
+        already_targeted_for_installation, to_install and to_uninstall,
+        and does not return anything.
 
         Parameters
             installed
@@ -681,8 +703,6 @@ class VirtualPackage(Unit, Installable, Uninstallable, Upgradeable, Downgradeabl
             to_uninstall
                 Set having all Package units that are being downgraded, and must therefore
                 be removed.
-            to_install_new
-                Set having all Package units that must be installed after the downgrade is performed.
         """
 
         if self in installed and self not in already_targeted_for_downgrade:
@@ -707,12 +727,6 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
 
     def __unicode__(self):
         return "{0} (group)".format(self.name)
-
-    def __eq__(self, other):
-        if isinstance(other, (Group, VirtualPackage, Package)):
-            if self.name == other.name:
-                return True
-        return False
 
     def add(self, package):
         """ Adds a package to the group.
@@ -785,8 +799,9 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
 
     def target_for_upgrade(self, installed, available, already_targeted_for_upgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the group is a target for an
-        upgrade operation. This method operates on the parameters already_targeted_for_upgrade, to_install,
-        to_uninstall and to_install_new, and does not return anything.
+        upgrade operation. This method operates on the parameters already_targeted_for_downgrade,
+        already_targeted_for_installation, to_install and to_uninstall,
+        and does not return anything.
 
         Parameters
             installed
@@ -804,8 +819,6 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
             to_uninstall
                 Set having all Package units that are being upgraded, and must therefore
                 be removed.
-            to_install_new
-                Set having all Package units that must be installed after the upgrade is performed.
         """
 
         if self in installed and self not in already_targeted_for_upgrade:
@@ -816,8 +829,9 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
 
     def target_for_downgrade(self, installed, available, already_targeted_for_downgrade, already_targeted_for_installation, to_install, to_uninstall):
         """ Triggered when the group is a target for an
-        downgrade operation. This method operates on the parameters already_targeted_for_downgrade, to_install,
-        to_uninstall and to_install_new, and does not return anything.
+        downgrade operation. This method operates on the parameters already_targeted_for_downgrade,
+        already_targeted_for_installation, to_install and to_uninstall,
+        and does not return anything.
 
         Parameters
             installed
@@ -835,8 +849,6 @@ class Group(Unit, Installable, Uninstallable, Upgradeable, Downgradeable):
             to_uninstall
                 Set having all Package units that are being downgraded, and must therefore
                 be removed.
-            to_install_new
-                Set having all Package units that must be installed after the downgrade is performed.
         """
 
         if self in installed and self not in already_targeted_for_downgrade:
@@ -861,13 +873,10 @@ class Set(set):
             self.add(unit)
 
     def __contains__(self, key):
-        for unit in self:
-            if isinstance(key, (Group, VirtualPackage)):
-                if unit.name == key.name:
-                    return unit
-            elif isinstance(key, Package) and isinstance(unit, Package):
-                if unit.name == key.name and unit.architecture == key.architecture:
-                    return unit
+        if isinstance(key, Unit):
+            unit = self.target(key.as_target())
+            if unit:
+                return unit
         return False
 
     def search(self, term):

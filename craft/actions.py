@@ -199,7 +199,7 @@ def _install(configuration, installed, package, filepath):
     except IOError:
         raise
 
-    installed.add(package)
+    #installed.add(package)
     return True
 
 def _uninstall(configuration, installed, package, keep_static):
@@ -303,7 +303,7 @@ def _uninstall(configuration, installed, package, keep_static):
         except OSError:
             break
 
-    installed.remove(package)
+    #installed.remove(package)
     return True
 
 def install(configuration, installed, available, attempt_install):
@@ -391,7 +391,7 @@ def uninstall(installed, attempt_uninstall):
     to_uninstall = Set()
 
     # Ignore units which are not installed
-    for unit in attempt_uninstall:
+    for unit in list(attempt_uninstall):
         if unit not in installed:
             message.simple("'{0}' is not installed and therefore cannot be uninstalled. Ignoring...".format(unit))
             attempt_uninstall.remove(unit)
