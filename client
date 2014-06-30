@@ -311,10 +311,14 @@ elif args['downgrade']:
 
     message.simple('All packages have been successfully downgraded. Good bye!')
 elif args['describe']:
-    if args['<unit>']:
-        targeted = target(installed, args['<unit>'], configuration.default_architecture())
+    if args['--installed']:
+        context = installed
+    elif args['--available']:
+        context = available
     else:
-        targeted = installed
+        context = installed
+
+    targeted = target(context, args['<unit>'], configuration.default_architecture())
 
     if not targeted:
         message.simple("No matches found.")
@@ -322,4 +326,4 @@ elif args['describe']:
 
     for unit in targeted:
         if isinstance(unit, elements.Describable):
-            unit.describe(installed)
+            unit.describe(context)
