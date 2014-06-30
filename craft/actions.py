@@ -199,7 +199,7 @@ def _install(configuration, installed, package, filepath):
     except IOError:
         raise
 
-    #installed.add(package)
+    installed.add(package)
     return True
 
 def _uninstall(configuration, installed, package, keep_static):
@@ -303,7 +303,7 @@ def _uninstall(configuration, installed, package, keep_static):
         except OSError:
             break
 
-    #installed.remove(package)
+    installed.remove(package)
     return True
 
 def install(configuration, installed, available, attempt_install):
@@ -405,10 +405,12 @@ def uninstall(installed, attempt_uninstall):
 
     return to_uninstall
 
-def upgrade(installed, available, attempt_upgrade):
+def upgrade(configuration, installed, available, attempt_upgrade):
     """ Returns a collection of units for performing an upgrade.
 
     Parameters
+        configuration
+            a valid Craft Configuration object.
         installed
             Set having all currently installed units on the system.
         available
@@ -418,7 +420,13 @@ def upgrade(installed, available, attempt_upgrade):
             to get to be upgraded.
     Raises
         BrokenDependency
-            if a newly found dependency could not be satisfied.
+            if a dependency could not be resolved.
+        Conflict
+            if a conflict was found between two units.
+        PackageNotAllowed
+            if at least one of the units targeted for installation
+            is not able to be installed due to its CPU architecture
+            being disabled.
     Returns
         list
             having the units that must be installed, and are replacing older
@@ -447,12 +455,29 @@ def upgrade(installed, available, attempt_upgrade):
         else:
             message.simple("'{0}' is not upgradeable. Ignoring...".format(unit))
 
+    # Check if any of the units is not allowed due to one their CPU
+    # architectures not being enabled
+    for unit in to_install:
+        if not configuration.is_unit_allowed(unit):
+            message.simple("'{0}' is not allowed to be installed since its architecture is not currently enabled.".format(unit))
+            raise PackageNotAllowed(unit)
+
+    # Check for conflicts
+    for unit in to_install:
+        if isinstance(unit, Incompatible):
+            try:
+                unit.check_for_conflicts(installed, to_install)
+            except Conflict:
+                raise
+
     return [to_install, to_uninstall]
 
-def downgrade(installed, available, attempt_downgrade):
+def downgrade(configuration, installed, available, attempt_downgrade):
     """ Returns a collection of units for performing an downgrade.
 
     Parameters
+        configuration
+            a valid Craft Configuration object.
         installed
             Set having all currently installed units on the system.
         available
@@ -462,7 +487,13 @@ def downgrade(installed, available, attempt_downgrade):
             to get to be downgraded.
     Raises
         BrokenDependency
-            if a newly found dependency could not be satisfied.
+            if a dependency could not be resolved.
+        Conflict
+            if a conflict was found between two units.
+        PackageNotAllowed
+            if at least one of the units targeted for installation
+            is not able to be installed due to its CPU architecture
+            being disabled.
     Returns
         list
             having the units that must be installed, and are replacing older
@@ -490,6 +521,21 @@ def downgrade(installed, available, attempt_downgrade):
                 raise
         else:
             message.simple("'{0}' is not downgradeable. Ignoring...".format(unit))
+
+    # Check if any of the units is not allowed due to one their CPU
+    # architectures not being enabled
+    for unit in to_install:
+        if not configuration.is_unit_allowed(unit):
+            message.simple("'{0}' is not allowed to be installed since its architecture is not currently enabled.".format(unit))
+            raise PackageNotAllowed(unit)
+
+    # Check for conflicts
+    for unit in to_install:
+        if isinstance(unit, Incompatible):
+            try:
+                unit.check_for_conflicts(installed, to_install)
+            except Conflict:
+                raise
 
     return [to_install, to_uninstall]
 

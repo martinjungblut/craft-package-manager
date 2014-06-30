@@ -4,7 +4,7 @@
 
 Usage:
     craft install <unit> ...
-    craft uninstall [--obsolete | --unneeded] <unit> ...
+    craft uninstall <unit> ...
     craft upgrade [<unit>] ...
     craft downgrade [<unit>] ...
     craft search [--installed | --available] <term>
@@ -97,6 +97,7 @@ elif args['install']:
         exit()
     except elements.BrokenDependency as d:
         message.warning("Package '{0}' depends on '{1}', but such dependency is not currently available to be installed. Aborting...".format(d.package, d.dependency_description))
+        exit()
     except:
         raise
 
@@ -168,3 +169,131 @@ elif args['uninstall']:
             exit()
 
     message.simple('All packages have been successfully uninstalled. Good bye!')
+elif args['upgrade']:
+    if args['<unit>']:
+        targeted = target(installed, args['<unit>'], configuration.default_architecture())
+    else:
+        targeted = installed
+
+    try:
+        targeted = actions.upgrade(configuration, installed, available, targeted)
+    except elements.Conflict as c:
+        message.warning("A conflict has been found between the units '{0}' and '{1}'. Aborting...".format(c.first_unit, c.second_unit))
+        exit()
+    except elements.BrokenDependency as d:
+        message.warning("Package '{0}' depends on '{1}', but such dependency is not currently available to be installed. Aborting...".format(d.package, d.dependency_description))
+        exit()
+    except:
+        raise
+
+    to_install = targeted[0]
+    to_uninstall = targeted[1]
+
+    if not to_install or not to_uninstall:
+        message.simple('No units to upgrade.')
+        exit()
+
+    print("The following units are going to be uninstalled:")
+    counter = 0
+    for unit in to_uninstall:
+        print("{0} - {1}".format(counter, unit))
+        counter = counter+1
+
+    print("The following units are going to be installed:")
+    counter = 0
+    for unit in to_install:
+        print("{0} - {1}".format(counter, unit))
+        counter = counter+1
+
+    if not user_agrees():
+        print("Maybe next time... Good bye!")
+        exit()
+
+    for package in to_uninstall:
+        try:
+            message.simple("Uninstalling '{0}'...".format(package))
+            actions._uninstall(configuration, installed, package, True)
+            message.simple("'{0}' was successfully uninstalled...".format(package))
+        except actions.UninstallError as ue:
+            message.warning("An error has occurred while uninstalling the following package: '{0}'.".format(ue.package))
+            exit()
+
+    for package in to_install:
+        if package.has_checksum():
+            archive_path = configuration.db()+'available/'+package.repository+'/cache/'+package.name+'/'+package.version+'/'+package.architecture+'/package.tar.gz'
+        else:
+            archive_path = False
+        package.save_temporary_flags()
+        try:
+            message.simple("Installing '{0}'...".format(package))
+            actions._install(configuration, installed, package, archive_path)
+            message.simple("'{0}' was successfully installed...".format(package))
+        except actions.InstallError as ie:
+            message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
+            exit()
+
+    message.simple('All packages have been successfully upgraded. Good bye!')
+elif args['downgrade']:
+    if args['<unit>']:
+        targeted = target(installed, args['<unit>'], configuration.default_architecture())
+    else:
+        targeted = installed
+
+    try:
+        targeted = actions.downgrade(configuration, installed, available, targeted)
+    except elements.Conflict as c:
+        message.warning("A conflict has been found between the units '{0}' and '{1}'. Aborting...".format(c.first_unit, c.second_unit))
+        exit()
+    except elements.BrokenDependency as d:
+        message.warning("Package '{0}' depends on '{1}', but such dependency is not currently available to be installed. Aborting...".format(d.package, d.dependency_description))
+        exit()
+    except:
+        raise
+
+    to_install = targeted[0]
+    to_uninstall = targeted[1]
+
+    if not to_install or not to_uninstall:
+        message.simple('No units to downgrade.')
+        exit()
+
+    print("The following units are going to be uninstalled:")
+    counter = 0
+    for unit in to_uninstall:
+        print("{0} - {1}".format(counter, unit))
+        counter = counter+1
+
+    print("The following units are going to be installed:")
+    counter = 0
+    for unit in to_install:
+        print("{0} - {1}".format(counter, unit))
+        counter = counter+1
+
+    if not user_agrees():
+        print("Maybe next time... Good bye!")
+        exit()
+
+    for package in to_uninstall:
+        try:
+            message.simple("Uninstalling '{0}'...".format(package))
+            actions._uninstall(configuration, installed, package, True)
+            message.simple("'{0}' was successfully uninstalled...".format(package))
+        except actions.UninstallError as ue:
+            message.warning("An error has occurred while uninstalling the following package: '{0}'.".format(ue.package))
+            exit()
+
+    for package in to_install:
+        if package.has_checksum():
+            archive_path = configuration.db()+'available/'+package.repository+'/cache/'+package.name+'/'+package.version+'/'+package.architecture+'/package.tar.gz'
+        else:
+            archive_path = False
+        package.save_temporary_flags()
+        try:
+            message.simple("Installing '{0}'...".format(package))
+            actions._install(configuration, installed, package, archive_path)
+            message.simple("'{0}' was successfully installed...".format(package))
+        except actions.InstallError as ie:
+            message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
+            exit()
+
+    message.simple('All packages have been successfully downgraded. Good bye!')

@@ -136,9 +136,6 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
     def __unicode__(self):
         return "{0}:{1} {2}".format(self.name, self.architecture, self.version)
 
-    def as_target(self):
-        return "{0}:{1}".format(self.name, self.architecture)
-
     def __lt__(self, other):
         if isinstance(other, Package):
             if dsl.version.compare(self.version, other.version) == 1:
@@ -147,6 +144,9 @@ class Package(Unit, Incompatible, Installable, Uninstallable, Upgradeable, Downg
             if self.name < other.name:
                 return True
         return False
+
+    def as_target(self):
+        return "{0}:{1}".format(self.name, self.architecture)
 
     def has_checksum(self, checksum=False):
         """ Checks whether the package has a specific checksum, or any
