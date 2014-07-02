@@ -1,58 +1,52 @@
-""" Interface for managing package archives. """
+""" Manage archives. """
 
 # Standard library imports
 from tarfile import open as archive_open
 
 def getfiles(filepath):
-    """ Get all files from a package file as a list,
-    ignoring special control files.
+    """ Retrieve all files from an archive as a list.
 
     Parameters
         filepath
-            package archive for the files list to be retrieved from.
+            archive for the files list to be retrieved from.
     Returns
         list
-            having the package's archive's files' names.
+            having the archive's files' names.
         False
             if an IOError occurred during any of the operations.
     """
 
-    controlfiles = [
-        '.', './.craft', './.craft/postinst',
-        './.craft/postrm', './.craft/preinst', './.craft/prerm'
-    ]
-
     try:
         handle = archive_open(filepath)
     except IOError:
         return False
-
-    files = handle.getnames()
-    handle.close()
-
-    try:
-        for controlfile in controlfiles:
-            files.remove(controlfile)
-    except ValueError:
-        pass
+    else:
+        files = handle.getnames()
+        handle.close()
 
     return reversed(files)
 
 def extract(filepath, destination):
-    """ Extract a package file to a specified destination.
+    """ Extract an archive to a specific destination.
 
+    Parameters
+        filepath
+            archive for the files to be extracted from.
+        destination
+            filesystem destination for the archive to be extracted to. 
     Returns
         True
-            if the package file was successfully extracted.
+            if the archive was successfully extracted.
         False
-            if the package file could not be extracted.
+            if the archive could not be extracted.
     """
+
     try:
         handle = archive_open(filepath)
-        handle.extractall(destination)
     except IOError:
         return False
-    finally:
+    else:
+        handle.extractall(destination)
         handle.close()
 
     return True

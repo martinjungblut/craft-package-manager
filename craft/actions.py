@@ -90,6 +90,20 @@ class PackageNotAllowed(Exception):
 
         self.package = package
 
+class EnableError(Exception):
+    """ Raised when it is not possible to enable a local cached repository
+    from an archive. """
+
+    def __init__(self, filepath):
+        """ Constructor.
+
+        Parameters
+            filepath
+                absolute filesystem path of the repository's archive
+        """
+
+        self.filepath = filepath
+
 def _install(configuration, installed, package, filepath):
     """ Performs a low-level package installation.
 
@@ -558,6 +572,13 @@ def download(configuration, packages):
     """
 
     grouped_packages = {}
+    db = configuration.db()
+    repositories = configuration.repositories()
+    packages = list(packages)
+
+    for package in list(packages):
+        if isfile(db+'/available/'+package.repository+'/cache/'+package.name+'/'+package.version+'/'+package.architecture+'/package.tar.gz'):
+            packages.remove(package)
 
     for package in packages:
         try:
@@ -568,7 +589,7 @@ def download(configuration, packages):
 
     for repository_name in grouped_packages.iterkeys():
         try:
-            repository = configuration.repositories()[repository_name]
+            repository = repositories[repository_name]
         except KeyError:
             raise RepositoryError(repository_name) 
 
@@ -586,12 +607,12 @@ def download(configuration, packages):
                 a = package.architecture
 
                 directories = [
-                    configuration.db()+'/available',
-                    configuration.db()+'/available/'+repository_name,
-                    configuration.db()+'/available/'+repository_name+'/cache',
-                    configuration.db()+'/available/'+repository_name+'/cache/'+n,
-                    configuration.db()+'/available/'+repository_name+'/cache/'+n+'/'+v,
-                    configuration.db()+'/available/'+repository_name+'/cache/'+n+'/'+v+'/'+a
+                    db+'/available',
+                    db+'/available/'+repository_name,
+                    db+'/available/'+repository_name+'/cache',
+                    db+'/available/'+repository_name+'/cache/'+n,
+                    db+'/available/'+repository_name+'/cache/'+n+'/'+v,
+                    db+'/available/'+repository_name+'/cache/'+n+'/'+v+'/'+a
                 ]
 
                 for directory in directories:
@@ -601,7 +622,7 @@ def download(configuration, packages):
                         pass
 
                 try:
-                    chdir(configuration.db()+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
+                    chdir(db+'/available/'+package.repository+'/cache/'+n+'/'+v+'/'+a)
                 except OSError:
                     raise DownloadError(package)
 
@@ -714,3 +735,27 @@ def sync(configuration):
             pass
 
     return True
+
+def enable_local_cached_repository(configuration, filepath):
+    """ Enables a local cached repository from an archive.
+
+    Parameters
+        configuration
+            a valid Craft Configuration object.
+        filepath
+            absolute filesystem path of the repository's archive
+    Raises
+        EnableError
+            if it was not possible to enable the local
+            cached repository.
+    """
+
+    db = configuration.db()
+
+    try:
+        mkdir(db+'available')
+    except OSError:
+        pass
+
+    if not archive.extract(filepath, db+'available'):
+        raise EnableError(filepath)

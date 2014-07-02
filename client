@@ -10,6 +10,7 @@ Usage:
     craft search [--installed | --available] <term>
     craft list [--installed | --available]
     craft describe [--installed | --available] <unit> ...
+    craft enable-local-repository <archive>
     craft sync
     craft clear
     craft (-h | --help | --version)
@@ -53,8 +54,10 @@ def user_agrees():
 
 if args['sync']:
     actions.sync(configuration)
+
 elif args['clear']:
     actions.clear(configuration, True)
+
 elif args['search']:
     installed_found = []
     available_found = []
@@ -72,6 +75,7 @@ elif args['search']:
             print("available: {0}".format(unit))
     else:
         print("No matches found.")
+
 elif args['list']:
     if args['--installed']:
         for unit in sorted(installed):
@@ -84,6 +88,25 @@ elif args['list']:
             print("installed: {0}".format(unit))
         for unit in sorted(available):
             print("available: {0}".format(unit))
+
+elif args['describe']:
+    if args['--installed']:
+        context = installed
+    elif args['--available']:
+        context = available
+    else:
+        context = installed
+
+    targeted = target(context, args['<unit>'], configuration.default_architecture())
+
+    if not targeted:
+        message.simple("No matches found.")
+        exit()
+
+    for unit in targeted:
+        if isinstance(unit, elements.Describable):
+            unit.describe(context)
+
 elif args['install']:
     targeted = target(available, args['<unit>'], configuration.default_architecture())
 
@@ -133,10 +156,11 @@ elif args['install']:
             actions._install(configuration, installed, package, archive_path)
             message.simple("'{0}' was successfully installed...".format(package))
         except actions.InstallError as ie:
-            message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
+            message.warning("An error has occurred while installing the following package: '{0}'. Aborting...".format(ie.package))
             exit()
 
     message.simple('All packages have been successfully installed. Good bye!')
+
 elif args['uninstall']:
     targeted = target(installed, args['<unit>'], configuration.default_architecture())
 
@@ -166,10 +190,11 @@ elif args['uninstall']:
             actions._uninstall(configuration, installed, package, False)
             message.simple("'{0}' was successfully uninstalled...".format(package))
         except actions.UninstallError as ue:
-            message.warning("An error has occurred while uninstalling the following package: '{0}'.".format(ue.package))
+            message.warning("An error has occurred while uninstalling the following package: '{0}'. Aborting...".format(ue.package))
             exit()
 
     message.simple('All packages have been successfully uninstalled. Good bye!')
+
 elif args['upgrade']:
     if args['<unit>']:
         targeted = target(installed, args['<unit>'], configuration.default_architecture())
@@ -222,7 +247,7 @@ elif args['upgrade']:
             actions._uninstall(configuration, installed, package, True)
             message.simple("'{0}' was successfully uninstalled...".format(package))
         except actions.UninstallError as ue:
-            message.warning("An error has occurred while uninstalling the following package: '{0}'.".format(ue.package))
+            message.warning("An error has occurred while uninstalling the following package: '{0}'. Aborting...".format(ue.package))
             exit()
 
     for package in to_install:
@@ -236,10 +261,11 @@ elif args['upgrade']:
             actions._install(configuration, installed, package, archive_path)
             message.simple("'{0}' was successfully installed...".format(package))
         except actions.InstallError as ie:
-            message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
+            message.warning("An error has occurred while installing the following package: '{0}'. Aborting...".format(ie.package))
             exit()
 
     message.simple('All packages have been successfully upgraded. Good bye!')
+
 elif args['downgrade']:
     if args['<unit>']:
         targeted = target(installed, args['<unit>'], configuration.default_architecture())
@@ -292,7 +318,7 @@ elif args['downgrade']:
             actions._uninstall(configuration, installed, package, True)
             message.simple("'{0}' was successfully uninstalled...".format(package))
         except actions.UninstallError as ue:
-            message.warning("An error has occurred while uninstalling the following package: '{0}'.".format(ue.package))
+            message.warning("An error has occurred while uninstalling the following package: '{0}'. Aborting...".format(ue.package))
             exit()
 
     for package in to_install:
@@ -306,24 +332,19 @@ elif args['downgrade']:
             actions._install(configuration, installed, package, archive_path)
             message.simple("'{0}' was successfully installed...".format(package))
         except actions.InstallError as ie:
-            message.warning("An error has occurred while installing the following package: '{0}'.".format(ie.package))
+            message.warning("An error has occurred while installing the following package: '{0}'. Aborting...".format(ie.package))
             exit()
 
     message.simple('All packages have been successfully downgraded. Good bye!')
-elif args['describe']:
-    if args['--installed']:
-        context = installed
-    elif args['--available']:
-        context = available
-    else:
-        context = installed
 
-    targeted = target(context, args['<unit>'], configuration.default_architecture())
+elif args['enable-local-repository']:
+    filepath = args['<archive>']
 
-    if not targeted:
-        message.simple("No matches found.")
+    try:
+        actions.enable_local_cached_repository(configuration, filepath)
+    except EnableError as e:
+        message.warning("An error has occurred while enabling the following local cached repository: '{0}'.".format(e.filepath))
         exit()
-
-    for unit in targeted:
-        if isinstance(unit, elements.Describable):
-            unit.describe(context)
+    else:
+        message.simple('Local cached repository enabled successfully!')
+    
