@@ -1,5 +1,6 @@
 """ Craft elements. """
 
+
 # Standard library imports
 from abc import ABCMeta, abstractmethod
 
@@ -501,6 +502,13 @@ class Package(Unit, Incompatible, Describable, Installable, Uninstallable, Upgra
                             print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
                             allow_uninstallation = False
                             break
+
+            for package in already_targeted.packages():
+                if package not in to_uninstall:
+                    if self.as_target() in package.dependencies():
+                        print("'{0}' has been untargeted for uninstallation because it is a dependency of '{1}'.".format(self, package))
+                        allow_uninstallation = False
+                        break
 
             if allow_uninstallation:
                 to_uninstall.add(self)

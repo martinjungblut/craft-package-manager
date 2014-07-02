@@ -282,9 +282,11 @@ def _uninstall(configuration, installed, package, keep_static):
     if keep_static:
         for each in package.static():
             try:
+                message.simple("Attempting to save '{0}' as '{1}'...".format(root+each, root+each+'.craft-old'))
                 rename(root+each, root+each+'.craft-old')
             except OSError:
-                message.warning("could not preserve the following static file: '{0}'.".format(root+each))
+                message.simple("Could not preserve the following static file: '{0}'.".format(root+each))
+                message.simple("  '{0}' may exist already.".format(root+each+'.craft-old'))
                 pass
 
     for each in package_files:
@@ -294,7 +296,6 @@ def _uninstall(configuration, installed, package, keep_static):
             elif isfile(root+each):
                 remove(root+each)
         except OSError:
-            message.warning("could not delete the following file: '{0}'.".format(root+each))
             pass
 
     for each in craft_files:
@@ -304,7 +305,6 @@ def _uninstall(configuration, installed, package, keep_static):
             elif isfile(each):
                 remove(each)
         except OSError:
-            message.warning("could not delete the following file: '{0}'.".format(each))
             pass
 
     try_to_remove = [
